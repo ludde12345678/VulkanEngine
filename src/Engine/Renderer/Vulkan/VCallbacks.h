@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <iostream>
 
 inline static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(

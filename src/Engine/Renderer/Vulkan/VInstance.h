@@ -1,9 +1,9 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+
 #include <glm/glm.hpp>
-#include <vulkan/vulkan.h>
+#include <volk.h>
+#include <GLFW/glfw3.h>
 #include <iostream>
 
 #include "VContext.h"
@@ -13,6 +13,7 @@
 #include "VSwapchain.h"
 #include "VCommands.h"
 #include "VSync.h"
+#include "VUtils.h"
 
 void createInstance(VulkanContext& ctx);
 
@@ -25,7 +26,3 @@ bool checkValidationLayerSupport(const std::vector<const char*>& RequestedLayers
 void createDebugMessenger(VulkanContext& ctx);
 
 void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
-
-VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
-
-VkResult DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT DebugMessenger, const VkAllocationCallbacks* Allocator);

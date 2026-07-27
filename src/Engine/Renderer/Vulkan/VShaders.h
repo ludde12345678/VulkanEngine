@@ -1,12 +1,13 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <iostream>
 #include <fstream>
 #include <string>
 
 #include "VContext.h"
 #include "VConfig.h"
+#include "VUtils.h"
 
 void createShaders(VulkanContext &ctx);
 

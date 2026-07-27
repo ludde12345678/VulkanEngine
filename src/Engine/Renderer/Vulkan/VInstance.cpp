@@ -157,7 +157,7 @@ void createDebugMessenger(VulkanContext& ctx) {
 	populateDebugMessengerCreateInfo(createInfo);
 
 	VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
-	if (CreateDebugUtilsMessengerEXT(ctx.instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
+	if (vkCreateDebugUtilsMessengerEXT(ctx.instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
 		throw std::runtime_error("failed to set up debug messenger!");
 	}
 	ctx.debugMessenger = debugMessenger;
@@ -173,22 +173,4 @@ void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& create
 	createInfo.pUserData = nullptr;
 }
 
-VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
-	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-	if (func != nullptr) {
-		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-	}
-	else {
-		return VK_ERROR_EXTENSION_NOT_PRESENT;
-	}
-}
-VkResult DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT DebugMessenger, const VkAllocationCallbacks* Allocator) {
-	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-	if (func != nullptr) {
-		func(instance, DebugMessenger, Allocator);
-		return VK_SUCCESS;
-	}
-	else {
-		return VK_ERROR_EXTENSION_NOT_PRESENT;
-	}
-}
+

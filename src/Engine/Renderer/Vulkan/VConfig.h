@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <filesystem>
 
 namespace VConfig {
@@ -48,7 +48,26 @@ namespace VConfig {
 	// shaders
 	inline std::filesystem::path SHADER_DIR = "shaders";
 
+	// default Renderstate
 
+	inline VulkanGraphicsState DefaultGraphicsState
+	{
+		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		.cullMode = VK_CULL_MODE_NONE,
+		.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+		.polygonMode = VK_POLYGON_MODE_FILL,
+		.rasterizerDiscard = false,
+		.depthTest = false,
+		.depthBias = false,
+		.depthWrite = false,
+		.stencilTest = false,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.sampleMask = 0xFFFFFFFF,
+
+
+		.alphaToCoverage = false,
+		.colorBlendEnable = VK_FALSE
+	};
 
 	
 }

@@ -5,4 +5,6 @@
 
 GLFWwindow* createWindow();
 
+void setupGLFWCallbacks(GLFWwindow* window);
+
 void pollWindow(GLFWwindow* window);

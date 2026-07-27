@@ -1,11 +1,8 @@
 #pragma once
 
-#pragma once
-
-#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <iostream>
 
 #include "Vulkan/VContext.h"
@@ -17,13 +14,24 @@
 #include "Vulkan/VSwapchain.h"
 #include "Vulkan/VCommands.h"
 #include "Vulkan/VSync.h"
-#include "Vulkan/shaders.h"
+#include "Vulkan/VShaders.h"
+#include "Vulkan/VImage.h"
+#include "Vulkan/VPipeline.h"
+#include "Vulkan/VMesh.h"
 
+// datastructures
+#include "../Scene/Scene.h"
+
+// memory
+#include "Vulkan/MemoryHandler/memory.h"
+#include "Vulkan/MemoryHandler/MemStructs.h"
 
 
 VulkanContext InitializeVulkan(GLFWwindow* window);
 
-void DrawFrame(VulkanContext& ctx, GLFWwindow* window);
+void DrawFrame(VulkanContext& ctx, GLFWwindow* window, const Scene& scene);
+
+void recreateSwapchainResources(VulkanContext& ctx, GLFWwindow* window);
 
 void waitForFrame(VulkanContext& ctx);
 
@@ -33,15 +41,7 @@ void submitFrame(VulkanContext& ctx, uint32_t imageIndex);
 
 void presentFrame(VulkanContext& ctx, uint32_t imageIndex);
 
-void recordCmdBuffers(VulkanContext& ctx, uint32_t imageIndex);
-
-void beginCmdBuffer(VkCommandBuffer cmd);
-
-void transitionSwapchainImage(VulkanContext& ctx, VkCommandBuffer cmd, uint32_t imageIndex, VkImageLayout newLayout);
-
-void transitionImageLayout(VkCommandBuffer cmd, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-
-VkImageAspectFlags getAspectFlags(VkFormat format);
+void recordCmdBuffers(VulkanContext& ctx, uint32_t imageIndex, const Scene& scene);
 
 void beginRendering(VulkanContext& ctx, VkCommandBuffer cmd, uint32_t imageIndex);
 
@@ -52,7 +52,5 @@ void setScissor(VulkanContext& ctx, VkCommandBuffer cmd);
 void bindShaders(VulkanContext& ctx, VkCommandBuffer cmd);
 
 void endRendering(VkCommandBuffer cmd);
-
-void endCommandBuffer(VkCommandBuffer cmd);
 
 void DestroyVulkan(VulkanContext& ctx);

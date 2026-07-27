@@ -90,6 +90,7 @@ void createSwapChain(VulkanContext& ctx, GLFWwindow* window) {
     SwapchainContext context{};
     context.swapchain = swapchain;
     context.status = SwapchainStatus::Ok;
+    context.imageCount = imageCount;
     context.images = images;
     context.imageViews = imageViews;
     context.imageFormat = swapCreateInfo.imageFormat;
@@ -109,6 +110,9 @@ void createSwapChain(VulkanContext& ctx, GLFWwindow* window) {
 }
 void recreateSwapchain(VulkanContext &ctx, GLFWwindow* window) {
 
+    destroySwapchain(ctx);
+
+    createSwapChain(ctx, window);
 }
 
 void destroySwapchain(VulkanContext &ctx) {
@@ -138,7 +142,40 @@ VkPresentModeKHR selectPresentMode(SwapChainSupportDetails& swapChainSupport) {
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 VkExtent2D selectSwapExtent(SwapChainSupportDetails& swapChainSupport, GLFWwindow* window) {
-    return swapChainSupport.capabilities.currentExtent;
+    if (swapChainSupport.capabilities.currentExtent.width != UINT32_MAX)
+    {
+        return swapChainSupport.capabilities.currentExtent;
+    }
+    int width;
+    int height;
+
+    glfwGetFramebufferSize(
+        window,
+        &width,
+        &height
+    );
+
+    VkExtent2D actualExtent =
+    {
+        static_cast<uint32_t>(width),
+        static_cast<uint32_t>(height)
+    };
+
+    actualExtent.width =
+        std::clamp(
+            actualExtent.width,
+            swapChainSupport.capabilities.minImageExtent.width,
+            swapChainSupport.capabilities.maxImageExtent.width
+        );
+
+    actualExtent.height =
+        std::clamp(
+            actualExtent.height,
+            swapChainSupport.capabilities.minImageExtent.height,
+            swapChainSupport.capabilities.maxImageExtent.height
+        );
+
+    return actualExtent;
 }
 
 

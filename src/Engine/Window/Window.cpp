@@ -22,6 +22,10 @@ GLFWwindow* createWindow() {
     return window;
 
 }
+void setupGLFWCallbacks(GLFWwindow* window) {
+
+    glfwSetFramebufferSizeCallback(window, GLFW_FramebufferSizeChangedCallback);
+}
 void pollWindow(GLFWwindow* window) {
     glfwPollEvents();
 }

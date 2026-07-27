@@ -1,0 +1,117 @@
+#include "memory.h"
+#include "../VCommands.h"
+
+
+// private
+namespace MemoryInternal {
+	void copyBuffer(VulkanContext& ctx, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+		VkCommandBuffer cmd = beginSingleTimeCommands(ctx);
+		VkBufferCopy2 copyRegion{};
+		copyRegion.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2;
+		copyRegion.srcOffset = 0;
+		copyRegion.dstOffset = 0;
+		copyRegion.size = size;
+		VkCopyBufferInfo2 bufCopyInfo{};
+		bufCopyInfo.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2;
+		bufCopyInfo.srcBuffer = srcBuffer;
+		bufCopyInfo.dstBuffer = dstBuffer;
+		bufCopyInfo.regionCount = 1;
+		bufCopyInfo.pRegions = &copyRegion;
+
+		vkCmdCopyBuffer2(cmd, &bufCopyInfo);
+
+		endSingleTimeCommands(ctx, cmd);
+
+	}
+
+	AllocatedBuffer createBuffer(VulkanContext& ctx, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) {
+
+		VkBuffer buf;
+		VkBufferCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		info.pNext = nullptr;
+		info.usage = usage;
+		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		info.size = size;
+
+		VK_CHECK(vkCreateBuffer(ctx.device, &info, nullptr, &buf), "Create buffer failed!");
+
+		VkBufferMemoryRequirementsInfo2 reqInfo{};
+		reqInfo.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2;
+		reqInfo.buffer = buf;
+
+		VkMemoryRequirements2 requirements{};
+		requirements.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+
+		vkGetBufferMemoryRequirements2(ctx.device, &reqInfo, &requirements);
+
+		VkDeviceMemory mem;
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.pNext = nullptr;
+		allocInfo.allocationSize = requirements.memoryRequirements.size;
+		allocInfo.memoryTypeIndex = findMemoryType(
+			ctx.physicalDevice,
+			requirements.memoryRequirements.memoryTypeBits,
+			properties
+		);
+		vkAllocateMemory(ctx.device, &allocInfo, nullptr, &mem);
+
+		VkBindBufferMemoryInfo bindInfo{};
+		bindInfo.sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO;
+		bindInfo.buffer = buf;
+		bindInfo.memory = mem;
+		bindInfo.memoryOffset = 0;
+
+		VK_CHECK(vkBindBufferMemory2(ctx.device, 1, &bindInfo), "Bind Buffer Memory Failed");
+		AllocatedBuffer AllocBuf{
+			.buffer = buf,
+			.memory = mem,
+			.size = size
+		};
+
+		return AllocBuf;
+	}
+	uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+
+		VkPhysicalDeviceMemoryProperties memProperties;
+		vkGetPhysicalDeviceMemoryProperties(
+			physicalDevice,
+			&memProperties
+		);
+
+		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+		{
+			if ((typeFilter & (1 << i)) &&
+				(memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+			{
+				return i;
+			}
+		}
+
+		throw std::runtime_error("Failed to find suitable memory type");
+	}
+
+}
+
+AllocatedBuffer createUniformBuffer(VulkanContext& ctx, VkDeviceSize size) {
+	return MemoryInternal::createBuffer(ctx, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+}
+
+void destroyBuffer(VulkanContext& ctx, AllocatedBuffer& buf) {
+	if (buf.buffer != VK_NULL_HANDLE)
+	{
+		vkDestroyBuffer(ctx.device, buf.buffer, nullptr);
+		buf.buffer = VK_NULL_HANDLE;
+	}
+
+	if (buf.memory != VK_NULL_HANDLE)
+	{
+		vkFreeMemory(ctx.device, buf.memory, nullptr);
+		buf.memory = VK_NULL_HANDLE;
+	}
+}
+
+
+
+

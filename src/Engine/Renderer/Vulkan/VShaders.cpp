@@ -1,4 +1,4 @@
-#include "shaders.h"
+#include "VShaders.h"
 
 void createShaders(VulkanContext& ctx)
 {
@@ -11,7 +11,7 @@ void createShaders(VulkanContext& ctx)
 	createShaderInfo(fragCode , VK_SHADER_STAGE_FRAGMENT_BIT)
 	};
 
-	auto vkCreateShadersEXT = (PFN_vkCreateShadersEXT)vkGetDeviceProcAddr(ctx.device, "vkCreateShadersEXT");
+	
 	if (!vkCreateShadersEXT)
 	{
 		throw std::runtime_error("Shader Extension not loaded!");
@@ -48,7 +48,7 @@ VkShaderCreateInfoEXT createShaderInfo(const std::vector<char>& code, VkShaderSt
 	
 
 	shaderInfo.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
-
+	
 	shaderInfo.codeSize = code.size();
 	shaderInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 	shaderInfo.pName = "main";
@@ -75,9 +75,6 @@ std::vector<char> readFile(const std::string filename) {
 
 void destroyShaders(VulkanContext& ctx)
 {
-	auto vkDestroyShaderEXT =
-		(PFN_vkDestroyShaderEXT)
-		vkGetDeviceProcAddr(ctx.device, "vkDestroyShaderEXT");
 	if (vkDestroyShaderEXT)
 	{
 		vkDestroyShaderEXT(ctx.device, ctx.shaderContext.vertexShader, nullptr);

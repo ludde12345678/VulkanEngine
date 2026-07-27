@@ -4,19 +4,22 @@ project(VulkanEngine LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
-add_executable(VulkanEngine "src/Engine/App/app.cpp"  "src/Engine/Window/Window.cpp" "src/Engine/Window/GLFWCallbacks.h" "src/Engine/Window/Window.h" "src/Engine/Renderer/Vulkan/VInstance.cpp" "src/Engine/Renderer/Vulkan/VInstance.h" "src/Engine/Window/GLFWCallbacks.cpp" "src/Engine/Renderer/Vulkan/VCallbacks.h" "src/main.cpp" "src/Engine/App/app.h" "src/Engine/Renderer/Renderer.cpp" "src/Engine/Renderer/Renderer.h" "src/Engine/Renderer/Vulkan/VDevice.h" "src/Engine/Renderer/Vulkan/VDevice.cpp" "src/Engine/Renderer/Vulkan/VSwapchain.h" "src/Engine/Renderer/Vulkan/VSwapchain.cpp" "src/Engine/Renderer/Vulkan/VContext.h" "src/Engine/Renderer/Vulkan/VCommands.cpp" "src/Engine/Renderer/Vulkan/VCommands.h" "src/Engine/Renderer/Vulkan/VSync.cpp" "src/Engine/Renderer/Vulkan/VSync.h" "src/Engine/Renderer/Vulkan/VConfig.h" "src/Engine/Renderer/Vulkan/shaders.cpp" "src/Engine/Renderer/Vulkan/shaders.h" "src/Engine/Window/GLFWContext.h")
+add_executable(VulkanEngine "src/Engine/App/app.cpp"  "src/Engine/Window/Window.cpp" "src/Engine/Window/GLFWCallbacks.h" "src/Engine/Window/Window.h" "src/Engine/Renderer/Vulkan/VInstance.cpp" "src/Engine/Renderer/Vulkan/VInstance.h" "src/Engine/Window/GLFWCallbacks.cpp" "src/Engine/Renderer/Vulkan/VCallbacks.h" "src/main.cpp" "src/Engine/App/app.h" "src/Engine/Renderer/Renderer.cpp" "src/Engine/Renderer/Renderer.h" "src/Engine/Renderer/Vulkan/VDevice.h" "src/Engine/Renderer/Vulkan/VDevice.cpp" "src/Engine/Renderer/Vulkan/VSwapchain.h" "src/Engine/Renderer/Vulkan/VSwapchain.cpp" "src/Engine/Renderer/Vulkan/VContext.h" "src/Engine/Renderer/Vulkan/VCommands.cpp" "src/Engine/Renderer/Vulkan/VCommands.h" "src/Engine/Renderer/Vulkan/VSync.cpp" "src/Engine/Renderer/Vulkan/VSync.h" "src/Engine/Renderer/Vulkan/VConfig.h" "src/Engine/Renderer/Vulkan/VShaders.cpp" "src/Engine/Renderer/Vulkan/VShaders.h" "src/Engine/Window/GLFWContext.h"   "src/Engine/Scene/VertexLayouts.h" "src/Engine/Renderer/Vulkan/MemoryHandler/memory.h" "src/Engine/Renderer/Vulkan/MemoryHandler/memory.cpp" "src/Engine/Renderer/Vulkan/MemoryHandler/MemStructs.h" "src/Engine/Renderer/Vulkan/VImage.cpp" "src/Engine/Renderer/Vulkan/VImage.h" "src/Engine/Renderer/Vulkan/VPipeline.cpp" "src/Engine/Renderer/Vulkan/VPipeline.h" "src/Engine/Renderer/Vulkan/VMesh.cpp" "src/Engine/Renderer/Vulkan/VMesh.h" "src/Engine/Renderer/Vulkan/VUtils.h" "src/Engine/Renderer/ResourceUploader.cpp" "src/Engine/Renderer/ResourceUploader.h" "src/Engine/Scene/Scene.h" "src/Engine/Scene/Mesh.h")
 
 # Find and link packages from vcpkg manifest
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
+find_package(volk CONFIG REQUIRED)
 
 # Link the imported targets (name may vary; adjust if CMake reports a missing target)
+if (WIN32)
+   set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
+endif()
 target_link_libraries(VulkanEngine PRIVATE
 glfw
 glm::glm
-Vulkan::Vulkan
-
+volk::volk
 )
 
 set(SHADERS_IN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/Shaders")

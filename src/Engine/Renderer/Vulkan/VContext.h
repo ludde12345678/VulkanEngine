@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <vector>
 
 enum class SwapchainStatus
@@ -8,6 +8,29 @@ enum class SwapchainStatus
 	Ok,
 	NeedsRecreation,
 	Invalid
+};
+
+struct VulkanGraphicsState
+{
+	VkPrimitiveTopology topology;
+
+	VkCullModeFlags cullMode;
+	VkFrontFace frontFace;
+
+	VkPolygonMode polygonMode;
+
+	bool rasterizerDiscard;
+
+	bool depthTest;
+	bool depthBias;
+	bool depthWrite;
+	bool stencilTest;
+
+	VkSampleCountFlagBits samples;
+	VkSampleMask sampleMask;
+
+	bool alphaToCoverage;
+	VkBool32 colorBlendEnable;
 };
 
 struct PipelineContext
@@ -26,6 +49,7 @@ struct SwapchainContext
 
 	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
 	SwapchainStatus status;
+	uint32_t imageCount = 0;
 	std::vector<VkImage> images;
 	std::vector<VkImageView> imageViews;
 	std::vector<VkImageLayout> imageLayouts;
@@ -44,9 +68,11 @@ struct QueueContext
 };
 struct SyncContext
 {
+	// frame based
 	std::vector<VkSemaphore> imageAvailableSemaphores;
-	std::vector<VkSemaphore> renderFinishedSemaphores;
 	std::vector<VkFence> inFlightFences;
+	// image based
+	std::vector<VkSemaphore> renderFinishedSemaphores;
 
 	size_t currentFrame = 0;
 };
@@ -65,19 +91,7 @@ struct VulkanContext
 	SyncContext syncContext;
 	ShaderContext shaderContext;
 	PipelineContext pipelineContext;
+	VulkanGraphicsState currentGraphicsState;
 
 
 };
-
-template<typename FunctionType>
-FunctionType loadInstanceFunction(VkInstance instance, const char name[]) {
-	FunctionType func = reinterpret_cast<FunctionType>(vkGetInstanceProcAddr(instance, name));
-	if (func == nullptr) { throw std::runtime_error("Instance extension function not found"); }
-	return func;
-}
-template<typename FunctionType>
-FunctionType loadDeviceFunction(VkDevice device, const char name[]) {
-	FunctionType func = reinterpret_cast<FunctionType>(vkGetDeviceProcAddr(device, name));
-	if (func == nullptr) { throw std::runtime_error("Device extension function not found"); }
-	return func;
-}
