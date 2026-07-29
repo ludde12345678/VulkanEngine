@@ -1,14 +1,14 @@
-#include "VShaders.h"
+#include "Shaders.h"
 
-void createShaders(VulkanContext& ctx)
+void createShaders(RendererContext& ctx)
 {
 
 	auto vertCode = readFile((VConfig::SHADER_DIR / "main.vert.spv").string());
 	auto fragCode = readFile((VConfig::SHADER_DIR / "main.frag.spv").string());
 	
 	std::vector<VkShaderCreateInfoEXT> createInfos{
-	createShaderInfo(vertCode, VK_SHADER_STAGE_VERTEX_BIT),
-	createShaderInfo(fragCode , VK_SHADER_STAGE_FRAGMENT_BIT)
+	createShaderInfo(ctx, vertCode, VK_SHADER_STAGE_VERTEX_BIT),
+	createShaderInfo(ctx, fragCode , VK_SHADER_STAGE_FRAGMENT_BIT)
 	};
 
 	
@@ -18,7 +18,7 @@ void createShaders(VulkanContext& ctx)
 	}
 
 	std::vector<VkShaderEXT> shaderHandles(static_cast<uint32_t>(createInfos.size()));
-	if (vkCreateShadersEXT(ctx.device, static_cast<uint32_t>(createInfos.size()),
+	if (vkCreateShadersEXT(ctx.vulkanContext.device, static_cast<uint32_t>(createInfos.size()),
 		createInfos.data(), nullptr, shaderHandles.data()) != VK_SUCCESS) {
 		throw std::runtime_error("Error: Shader creation failed");
 	}
@@ -32,13 +32,13 @@ void createShaders(VulkanContext& ctx)
 	shaderHandles[0],
 	shaderHandles[1]
 	};
-	ctx.shaderContext = shaderCtx;
+	ctx.shaders = shaderCtx;
 
 	
 
 }
 
-VkShaderCreateInfoEXT createShaderInfo(const std::vector<char>& code, VkShaderStageFlagBits stage) {
+VkShaderCreateInfoEXT createShaderInfo(RendererContext& ctx, const std::vector<char>& code, VkShaderStageFlagBits stage) {
 	VkShaderCreateInfoEXT shaderInfo{};
 	shaderInfo.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
 	shaderInfo.stage = stage;
@@ -52,7 +52,8 @@ VkShaderCreateInfoEXT createShaderInfo(const std::vector<char>& code, VkShaderSt
 	shaderInfo.codeSize = code.size();
 	shaderInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 	shaderInfo.pName = "main";
-
+	shaderInfo.setLayoutCount = 1;
+	shaderInfo.pSetLayouts = &ctx.descriptors.timeLayout;
 	shaderInfo.pNext = nullptr;
 
 	return shaderInfo;
@@ -73,44 +74,29 @@ std::vector<char> readFile(const std::string filename) {
 	return buf;
 }
 
-void destroyShaders(VulkanContext& ctx)
+void destroyShaders(RendererContext& ctx)
 {
 	if (vkDestroyShaderEXT)
 	{
-		vkDestroyShaderEXT(ctx.device, ctx.shaderContext.vertexShader, nullptr);
-		vkDestroyShaderEXT(ctx.device, ctx.shaderContext.fragmentShader, nullptr);
+		vkDestroyShaderEXT(ctx.vulkanContext.device, ctx.shaders.vertexShader, nullptr);
+		vkDestroyShaderEXT(ctx.vulkanContext.device, ctx.shaders.fragmentShader, nullptr);
 	}	
 
 
 }
 
+void bindShaders(RendererContext& ctx, VkCommandBuffer cmd) {
+	static const VkShaderStageFlagBits stages[] = {
+	VK_SHADER_STAGE_VERTEX_BIT,
+	VK_SHADER_STAGE_FRAGMENT_BIT
+	};
+	static const VkShaderEXT shaders[] = {
+	ctx.shaders.vertexShader,
+	ctx.shaders.fragmentShader
 
-void createPipelineLayout(VulkanContext& ctx) {
+	};
 
-
-	VkPipelineLayoutCreateInfo layoutCreateInfo{};
-	layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-
-	// descriptors
-	layoutCreateInfo.setLayoutCount = 0;
-	layoutCreateInfo.pSetLayouts = nullptr;
-
-	//push constants
-	layoutCreateInfo.pushConstantRangeCount = 0;
-	layoutCreateInfo.pPushConstantRanges = nullptr;
-
-
-	VkPipelineLayout layout;
-	if (vkCreatePipelineLayout(ctx.device, &layoutCreateInfo, nullptr, &layout) != VK_SUCCESS) { throw std::runtime_error("Error: Pipeline layout creation failed"); }
-	
-	PipelineContext pipeCtx{};
-	pipeCtx.pipelineLayout = layout;
-
-	ctx.pipelineContext = pipeCtx;
+	vkCmdBindShadersEXT(cmd, static_cast<uint32_t>(std::size(stages)), stages, shaders);
 
 }
-void destroyPipelineLayout(VulkanContext& ctx) {
 
-	vkDestroyPipelineLayout(ctx.device, ctx.pipelineContext.pipelineLayout, nullptr);
-
-}

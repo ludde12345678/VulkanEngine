@@ -3,9 +3,9 @@
 #include <volk.h>
 #include <iostream>
 
-#include "VContext.h"
-#include "../../Scene/Scene.h"
-#include "VUtils.h"
+#include "Vulkan/VContext.h"
+#include "../Scene/Scene.h"
+#include "Vulkan/VUtils.h"
 
 void drawMesh(VkCommandBuffer cmd, const Mesh& mesh);
 

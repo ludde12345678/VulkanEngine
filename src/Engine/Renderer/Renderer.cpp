@@ -17,38 +17,35 @@ VulkanContext InitializeVulkan(GLFWwindow* window) {
 	createSwapChain(ctx, window);
 	createCommandPool(ctx);
 	createCommandBuffers(ctx);
-	createPipelineLayout(ctx);
-	createShaders(ctx);
 	initializeSync(ctx);
 
 	return ctx;
 }
 
-void DestroyVulkan(VulkanContext& ctx) {
-	destroySync(ctx);
-	destroyShaders(ctx);
-	destroyPipelineLayout(ctx);
-	destroyCommandPool(ctx);
-	destroySwapchain(ctx);
-	vkDestroyDevice(ctx.device, nullptr);
-	vkDestroySurfaceKHR(ctx.instance, ctx.surface, nullptr);
+void DestroyVulkan(RendererContext& ctx) {
+	destroySync(ctx.vulkanContext);
+	destroyCommandPool(ctx.vulkanContext);
+	destroySwapchain(ctx.vulkanContext);
+	vkDestroyDevice(ctx.vulkanContext.device, nullptr);
+	vkDestroySurfaceKHR(ctx.vulkanContext.instance, ctx.vulkanContext.surface, nullptr);
 
-	if (ctx.debugMessenger != VK_NULL_HANDLE)
+	if (ctx.vulkanContext.debugMessenger != VK_NULL_HANDLE)
 	{
 		vkDestroyDebugUtilsMessengerEXT(
-			ctx.instance,
-			ctx.debugMessenger,
+			ctx.vulkanContext.instance,
+			ctx.vulkanContext.debugMessenger,
 			nullptr
 		);
 	}
 
-	vkDestroyInstance(ctx.instance, nullptr);
+	vkDestroyInstance(ctx.vulkanContext.instance, nullptr);
 	std::cout << "\nVulkan successfully destroyed\n";
 }
 
 
-void DrawFrame(VulkanContext &ctx, GLFWwindow* window, const Scene& scene) {
-
+void DrawFrame(RendererContext &RenderCtx, GLFWwindow* window, RenderData& Rdata) {
+	
+	VulkanContext& ctx = RenderCtx.vulkanContext;
 	waitForFrame(ctx);
 	uint32_t imageIndex = getSwapchainImage(ctx);
 	if (ctx.swapchainContext.status == SwapchainStatus::Invalid)
@@ -57,7 +54,17 @@ void DrawFrame(VulkanContext &ctx, GLFWwindow* window, const Scene& scene) {
 		return;
 	}
 	vkResetFences(ctx.device, 1, &ctx.syncContext.inFlightFences[ctx.syncContext.currentFrame]);
-	recordCmdBuffers(ctx, imageIndex, scene);
+	
+
+	updateUniformBuffer<TimeUBO>(RenderCtx.vulkanContext, RenderCtx.Uniforms.timeUB, Rdata.timeUniform);
+	
+	
+	
+	recordCmdBuffers(RenderCtx, imageIndex, Rdata.scene);
+	
+	
+	
+	
 	submitFrame(ctx, imageIndex);
 	presentFrame(ctx, imageIndex);
 	ctx.syncContext.currentFrame = (ctx.syncContext.currentFrame + 1) % VConfig::MAX_FRAMES_IN_FLIGHT;
@@ -186,16 +193,21 @@ void presentFrame(VulkanContext& ctx, uint32_t imageIndex) {
 
 
 
-void recordCmdBuffers(VulkanContext& ctx, uint32_t imageIndex, const Scene& scene) {
+void recordCmdBuffers(RendererContext& renderCtx, uint32_t imageIndex, const Scene* scene) {
+	
+	VulkanContext& ctx = renderCtx.vulkanContext;
 	VkCommandBuffer cmd = ctx.cmdBuffers[imageIndex];
 	beginCommandBuffer(cmd);
 	transitionSwapchainImage(ctx, cmd, imageIndex, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	beginRendering(ctx, cmd, imageIndex);
 	setViewport(ctx, cmd);
 	setScissor(ctx, cmd);
-	bindShaders(ctx, cmd);
+	bindShaders(renderCtx, cmd);
 	setupDynamicState(ctx, cmd);
-	for (const auto& mesh : scene.Meshes) {
+
+	bindUniformBuffers(renderCtx, cmd);
+
+	for (const auto& mesh : scene->Meshes) {
 		drawMesh(cmd, mesh);
 	}
 
@@ -249,24 +261,10 @@ void setScissor(VulkanContext& ctx, VkCommandBuffer cmd) {
 	scissor.offset = { 0,0 };
 	vkCmdSetScissorWithCountEXT(cmd, 1, &scissor);
 }
-void bindShaders(VulkanContext& ctx, VkCommandBuffer cmd) {
-	static const VkShaderStageFlagBits stages[] = {
-	VK_SHADER_STAGE_VERTEX_BIT,
-	VK_SHADER_STAGE_FRAGMENT_BIT
-};
-	static const VkShaderEXT shaders[] = {
-	ctx.shaderContext.vertexShader,
-	ctx.shaderContext.fragmentShader
 
-};
-
-	vkCmdBindShadersEXT(cmd, static_cast<uint32_t>(std::size(stages)), stages, shaders);
-
-}
 
 
 void endRendering(VkCommandBuffer cmd) {
 	vkCmdEndRendering(cmd);
 }
-
 

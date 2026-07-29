@@ -1,4 +1,4 @@
-#include "VPipeline.h"
+#include "Pipeline.h"
 
 
 void setupDynamicState(VulkanContext& ctx, VkCommandBuffer cmd)
@@ -99,5 +99,35 @@ void setupDynamicState(VulkanContext& ctx, VkCommandBuffer cmd)
 		1,
 		&mask
 	);
+
+}
+
+void createPipelineLayout(RendererContext& ctx) {
+
+
+	VkPipelineLayoutCreateInfo layoutCreateInfo{};
+	layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+
+	// descriptors
+	layoutCreateInfo.setLayoutCount = ctx.descriptors.descriptorCount;
+	layoutCreateInfo.pSetLayouts = &ctx.descriptors.timeLayout;
+
+	//push constants
+	layoutCreateInfo.pushConstantRangeCount = 0;
+	layoutCreateInfo.pPushConstantRanges = nullptr;
+
+
+	VkPipelineLayout layout;
+	if (vkCreatePipelineLayout(ctx.vulkanContext.device, &layoutCreateInfo, nullptr, &layout) != VK_SUCCESS) { throw std::runtime_error("Error: Pipeline layout creation failed"); }
+
+	PipelineContext pipeCtx{};
+	pipeCtx.pipelineLayout = layout;
+
+	ctx.pipeline = pipeCtx;
+
+}
+void destroyPipelineLayout(RendererContext& ctx) {
+
+	vkDestroyPipelineLayout(ctx.vulkanContext.device, ctx.pipeline.pipelineLayout, nullptr);
 
 }

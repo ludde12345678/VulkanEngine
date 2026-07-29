@@ -1,10 +1,9 @@
-#include "VMesh.h"
+#include "MeshRenderer.h"
 
 void drawMesh(VkCommandBuffer cmd, const Mesh& mesh)
 {
 	// vertex inputs
 	SetAndbindVertexInputs(cmd, mesh);
-
 	// draw here
 
 	vkCmdDraw(
@@ -17,7 +16,6 @@ void drawMesh(VkCommandBuffer cmd, const Mesh& mesh)
 }
 
 void SetAndbindVertexInputs(VkCommandBuffer cmd, const Mesh& mesh) {
-	assert(vkCmdSetVertexInputEXT != nullptr);
 	vkCmdSetVertexInputEXT(
 		cmd,
 		static_cast<uint32_t>(mesh.layout.bindings.size()),

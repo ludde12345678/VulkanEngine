@@ -33,16 +33,6 @@ struct VulkanGraphicsState
 	VkBool32 colorBlendEnable;
 };
 
-struct PipelineContext
-{
-	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-};
-
-struct ShaderContext
-{
-	VkShaderEXT vertexShader = VK_NULL_HANDLE;
-	VkShaderEXT fragmentShader = VK_NULL_HANDLE;
-};
 
 struct SwapchainContext
 {
@@ -89,8 +79,6 @@ struct VulkanContext
 	VkCommandPool cmdPool;
 	std::vector<VkCommandBuffer> cmdBuffers;
 	SyncContext syncContext;
-	ShaderContext shaderContext;
-	PipelineContext pipelineContext;
 	VulkanGraphicsState currentGraphicsState;
 
 

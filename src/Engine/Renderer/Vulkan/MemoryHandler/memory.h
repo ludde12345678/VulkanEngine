@@ -65,6 +65,7 @@ AllocatedBuffer createIndexBuffer(VulkanContext& ctx, const std::vector<T>& data
 	return buffer;
 }
 
+
 template<typename T>
 void updateUniformBuffer(VulkanContext& ctx, AllocatedBuffer& buffer, const T& data)
 {

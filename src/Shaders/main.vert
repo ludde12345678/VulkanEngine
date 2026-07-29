@@ -1,18 +1,37 @@
 #version 460
-#extension GL_KHR_vulkan_glsl : enable
+
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 0) in vec3 pos;
 layout(location = 1) in vec4 color;
 
+layout(set = 0, binding = 0) uniform TimeUBO
+{
+    uint FrameCount;
+} Time;
+
 void main()
 {
-    vec2 positions[3] = vec2[](
-        vec2(0.0, -0.5),
-        vec2(0.5, 0.5),
-        vec2(-0.5, 0.5)
+
+    float angle = float(Time.FrameCount) * 0.001; // rotation speed
+
+    float c = cos(angle);
+    float s = sin(angle);
+
+    mat2 rotation = mat2(
+        c, -s,
+        s,  c
     );
 
-    gl_Position = vec4(pos, 1.0);
-    fragColor = color;
+    vec2 rotatedPos = rotation * pos.xy;
+
+    gl_Position = vec4(rotatedPos, pos.z, 1.0);
+    float t = float(Time.FrameCount % 3000) / 3000.0;
+
+        fragColor = vec4(
+        t,              // red changes
+        1.0 - t,        // green inverse
+        0.5 + 0.5 * sin(t * 6.283), // blue oscillates
+        1.0
+    );
 }
