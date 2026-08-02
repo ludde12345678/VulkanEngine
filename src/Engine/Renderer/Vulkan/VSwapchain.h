@@ -8,6 +8,7 @@
 #include "VContext.h"
 #include "VConfig.h"
 #include "VUtils.h"
+#include "MemoryHandler/memory.h"
 
 
 struct SwapChainSupportDetails {
@@ -23,6 +24,8 @@ void recreateSwapchain(VulkanContext& ctx, GLFWwindow* window);
 void destroySwapchain(VulkanContext& ctx);
 
 VkSurfaceFormatKHR selectSwapSurfaceFormat(SwapChainSupportDetails& swapChainSupport);
+
+VkFormat selectDepthFormat(VulkanContext& ctx);
 
 VkPresentModeKHR selectPresentMode(SwapChainSupportDetails& swapChainSupport);
 

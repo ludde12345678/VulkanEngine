@@ -8,12 +8,12 @@
 #include "Vulkan/VContext.h"
 #include "Vulkan/VConfig.h"
 #include "Vulkan/VUtils.h"
-#include "RenderData.h"
+
 #include "RendererContext.h"
 
 void createShaders(RendererContext& ctx);
 
-VkShaderCreateInfoEXT createShaderInfo(RendererContext& ctx, const std::vector<char>& code, VkShaderStageFlagBits stage);
+VkShaderCreateInfoEXT createShaderInfo(RendererContext& ctx, const std::vector<char>& code, VkShaderStageFlagBits stage, VkShaderStageFlags nextStage);
 
 std::vector<char> readFile(const std::string filename);
 

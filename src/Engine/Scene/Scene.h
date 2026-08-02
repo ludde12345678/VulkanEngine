@@ -1,8 +1,9 @@
 #pragma once
 
-#include "Mesh.h"
+#include "Object.h"
 
 struct Scene
 {
-	std::vector<Mesh> Meshes;
+	std::vector<Object> objects;
+	std::vector<Mesh> meshes;
 };

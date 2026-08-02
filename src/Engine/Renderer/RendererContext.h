@@ -5,10 +5,25 @@
 #include "Vulkan/VContext.h"
 #include "ShaderData.h"
 
-struct UniformBuffers
-{
-	AllocatedBuffer timeUB;
+struct UniformInfo {
+	const char* name;
+	uint32_t binding;
+	uint32_t set;
+	uint32_t size;
+
+	VkDescriptorType type;
+	VkShaderStageFlags stages;
 };
+
+struct UniformResources
+{
+
+	UniformInfo info;
+
+	AllocatedBuffer buffer;
+
+};
+
 
 struct PipelineContext
 {
@@ -21,23 +36,34 @@ struct ShaderContext
 	VkShaderEXT fragmentShader = VK_NULL_HANDLE;
 };
 
-struct DescriptorContext
+
+// add uniforms here:
+struct UniformContext
 {
-	VkDescriptorPool pool = VK_NULL_HANDLE;
-	uint32_t descriptorCount = 1;
+	UniformResources time;
+	UniformResources camera;
+	UniformResources shading;
 
+	std::vector<UniformResources*> all;
 
-	VkDescriptorSetLayout timeLayout = VK_NULL_HANDLE;
-	VkDescriptorSet timeSet = VK_NULL_HANDLE;
+	std::vector<VkDescriptorSetLayout> layouts;
+	std::vector <VkDescriptorSet> sets;
+
+	std::vector <VkPushConstantRange> pushConstants;
+
 };
+
 
 struct RendererContext
 {
 	VulkanContext vulkanContext;
 
-	UniformBuffers Uniforms;
+	UniformContext Uniforms;
 	PipelineContext pipeline;
 	ShaderContext shaders;
-	DescriptorContext descriptors;
+
+	VkDescriptorPool DescPool = VK_NULL_HANDLE;
+	VkDescriptorPool ImGuiDescPool = VK_NULL_HANDLE;
 
 };
+

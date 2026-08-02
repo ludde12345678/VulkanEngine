@@ -28,6 +28,9 @@ void setupDynamicState(VulkanContext& ctx, VkCommandBuffer cmd)
 		cmd,
 		ctx.currentGraphicsState.depthTest
 	);
+	vkCmdSetDepthCompareOpEXT(
+		cmd,
+		ctx.currentGraphicsState.compareOp);
 	vkCmdSetDepthBiasEnableEXT(
 		cmd,
 		ctx.currentGraphicsState.depthBias
@@ -109,12 +112,12 @@ void createPipelineLayout(RendererContext& ctx) {
 	layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
 	// descriptors
-	layoutCreateInfo.setLayoutCount = ctx.descriptors.descriptorCount;
-	layoutCreateInfo.pSetLayouts = &ctx.descriptors.timeLayout;
+	layoutCreateInfo.setLayoutCount = ctx.Uniforms.layouts.size();
+	layoutCreateInfo.pSetLayouts = ctx.Uniforms.layouts.data();
 
 	//push constants
-	layoutCreateInfo.pushConstantRangeCount = 0;
-	layoutCreateInfo.pPushConstantRanges = nullptr;
+	layoutCreateInfo.pushConstantRangeCount = ctx.Uniforms.pushConstants.size();
+	layoutCreateInfo.pPushConstantRanges = ctx.Uniforms.pushConstants.data();
 
 
 	VkPipelineLayout layout;

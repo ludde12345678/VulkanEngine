@@ -2,6 +2,7 @@
 
 #include <volk.h>
 #include <vector>
+#include "MemoryHandler/MemStructs.h"
 
 enum class SwapchainStatus
 {
@@ -22,6 +23,7 @@ struct VulkanGraphicsState
 	bool rasterizerDiscard;
 
 	bool depthTest;
+	VkCompareOp compareOp;
 	bool depthBias;
 	bool depthWrite;
 	bool stencilTest;
@@ -42,9 +44,14 @@ struct SwapchainContext
 	uint32_t imageCount = 0;
 	std::vector<VkImage> images;
 	std::vector<VkImageView> imageViews;
+
+	std::vector<AllocatedImage> allocatedDepthImages;
+
+
 	std::vector<VkImageLayout> imageLayouts;
 
 	VkFormat imageFormat;
+	VkFormat depthFormat;
 	VkExtent2D extent;
 	VkPresentModeKHR presentMode;
 };

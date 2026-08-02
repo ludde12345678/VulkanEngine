@@ -1,10 +1,9 @@
 #include "Renderer.h"
+#include "../App/appConfig.h"
 
-
-VulkanContext InitializeVulkan(GLFWwindow* window) {
-	VulkanContext ctx{};
+void InitializeVulkan(RendererContext &RenderCtx ,GLFWwindow* window) {
+	VulkanContext& ctx = RenderCtx.vulkanContext;
 	volkInitialize();
-
 	ctx.currentGraphicsState = VConfig::DefaultGraphicsState;
 
 	createInstance(ctx);
@@ -17,12 +16,33 @@ VulkanContext InitializeVulkan(GLFWwindow* window) {
 	createSwapChain(ctx, window);
 	createCommandPool(ctx);
 	createCommandBuffers(ctx);
+	VkCommandBuffer tempcmd = beginSingleTimeCommands(ctx);
+	transitionSwapchainDepthImage(ctx, tempcmd, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	endSingleTimeCommands(ctx, tempcmd);
 	initializeSync(ctx);
 
-	return ctx;
+	setupDescriptorResources(RenderCtx);
+	createShaders(RenderCtx);
+
 }
 
-void DestroyVulkan(RendererContext& ctx) {
+void DestroyVulkan(RendererContext& ctx, Scene scene) {
+
+	vkDeviceWaitIdle(ctx.vulkanContext.device);
+	destroyUniformBuffers(ctx);
+	for (auto& mesh : scene.meshes) {
+		destroyBuffer(ctx.vulkanContext, mesh.vertexBuffer);
+		destroyBuffer(ctx.vulkanContext, mesh.indexBuffer);
+	}
+
+	ImGui_ImplVulkan_Shutdown();
+	destroyShaders(ctx);
+	destroyDescriptorPool(ctx);
+	destroyPipelineLayout(ctx);
+	destroyDescriptorLayouts(ctx);
+	
+
+
 	destroySync(ctx.vulkanContext);
 	destroyCommandPool(ctx.vulkanContext);
 	destroySwapchain(ctx.vulkanContext);
@@ -43,7 +63,13 @@ void DestroyVulkan(RendererContext& ctx) {
 }
 
 
-void DrawFrame(RendererContext &RenderCtx, GLFWwindow* window, RenderData& Rdata) {
+void printRendererDebugInfo(RendererContext& ctx, RenderData& renderData, Scene& scene) {
+	std::cout << "------------------\nRenderData:";
+	std::cout << "Time counter: " << renderData.Uniforms.time.FrameCount;
+	std::cout << "ammount of objects: " << scene.objects.size() << "\n";
+}
+
+void DrawFrame(RendererContext& RenderCtx, GLFWwindow* window, Scene& scene, RenderData& Rdata){
 	
 	VulkanContext& ctx = RenderCtx.vulkanContext;
 	waitForFrame(ctx);
@@ -55,12 +81,11 @@ void DrawFrame(RendererContext &RenderCtx, GLFWwindow* window, RenderData& Rdata
 	}
 	vkResetFences(ctx.device, 1, &ctx.syncContext.inFlightFences[ctx.syncContext.currentFrame]);
 	
+	// update all uniforms;
+	updateAllUniformBuffers(RenderCtx, Rdata);
 
-	updateUniformBuffer<TimeUBO>(RenderCtx.vulkanContext, RenderCtx.Uniforms.timeUB, Rdata.timeUniform);
 	
-	
-	
-	recordCmdBuffers(RenderCtx, imageIndex, Rdata.scene);
+	recordCmdBuffers(RenderCtx, imageIndex, &scene);
 	
 	
 	
@@ -69,6 +94,54 @@ void DrawFrame(RendererContext &RenderCtx, GLFWwindow* window, RenderData& Rdata
 	presentFrame(ctx, imageIndex);
 	ctx.syncContext.currentFrame = (ctx.syncContext.currentFrame + 1) % VConfig::MAX_FRAMES_IN_FLIGHT;
 
+}
+void recordCmdBuffers(RendererContext& renderCtx, uint32_t imageIndex, Scene* scene) {
+
+	VulkanContext& ctx = renderCtx.vulkanContext;
+	VkCommandBuffer cmd = ctx.cmdBuffers[imageIndex];
+	//vkResetCommandBuffer(cmd, 0);
+	beginCommandBuffer(cmd);
+	transitionSwapchainImage(ctx, cmd, imageIndex, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	beginRendering(ctx, cmd, imageIndex);
+	setViewport(ctx, cmd);
+	setScissor(ctx, cmd);
+	bindShaders(renderCtx, cmd);
+	setupDynamicState(ctx, cmd);
+
+	bindUniformBuffers(renderCtx, cmd);
+
+
+
+	for (auto& obj : scene->objects) {
+
+		Mesh& mesh = scene->meshes[obj.meshIndex];
+
+		vkCmdPushConstants(cmd, renderCtx.pipeline.pipelineLayout,
+			VK_SHADER_STAGE_VERTEX_BIT,
+			0,
+			sizeof(obj.transform),
+			&obj.transform);
+		drawMesh(cmd, mesh);
+	}
+
+	if (appConfig::enableImGui) {
+		// Draw UI last
+		ImGui_ImplVulkan_RenderDrawData(
+			ImGui::GetDrawData(),
+			cmd
+		);
+	}
+	endRendering(cmd);
+	transitionSwapchainImage(ctx, cmd, imageIndex, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	endCommandBuffer(cmd);
+
+}
+
+void updateAllUniformBuffers(RendererContext& RenderCtx, RenderData& Rdata)
+{
+	updateUniformBuffer<TimeUBO>(RenderCtx.vulkanContext, RenderCtx.Uniforms.time.buffer, Rdata.Uniforms.time);
+	updateUniformBuffer<CameraUBO>(RenderCtx.vulkanContext, RenderCtx.Uniforms.camera.buffer, Rdata.Uniforms.camera);
+	updateUniformBuffer<ShadingUBO>(RenderCtx.vulkanContext, RenderCtx.Uniforms.shading.buffer, Rdata.Uniforms.shading);
 }
 
 void recreateSwapchainResources(VulkanContext& ctx, GLFWwindow* window)
@@ -84,6 +157,9 @@ void recreateSwapchainResources(VulkanContext& ctx, GLFWwindow* window)
 	vkDeviceWaitIdle(ctx.device);
 	recreateSwapchain(ctx, window);
 	recreateImageSync(ctx);
+	VkCommandBuffer tempcmd = beginSingleTimeCommands(ctx);
+	transitionSwapchainDepthImage(ctx, tempcmd, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	endSingleTimeCommands(ctx, tempcmd);
 }
 
 void waitForFrame(VulkanContext& ctx) {
@@ -152,8 +228,15 @@ void submitFrame(VulkanContext& ctx, uint32_t imageIndex) {
 
 
 	// submit work, when finished signal infligt fence, so cpu know this frameslot is cleared for reuse
-	vkQueueSubmit2(ctx.queueContext.graphicsQueue, 1, &submitInfo, ctx.syncContext.inFlightFences[ctx.syncContext.currentFrame]);
-
+	VK_CHECK(
+		vkQueueSubmit2(
+			ctx.queueContext.graphicsQueue,
+			1,
+			&submitInfo,
+			ctx.syncContext.inFlightFences[ctx.syncContext.currentFrame]
+		),
+		"Queue submit failed"
+	);
 
 }
 void presentFrame(VulkanContext& ctx, uint32_t imageIndex) {
@@ -193,43 +276,36 @@ void presentFrame(VulkanContext& ctx, uint32_t imageIndex) {
 
 
 
-void recordCmdBuffers(RendererContext& renderCtx, uint32_t imageIndex, const Scene* scene) {
-	
-	VulkanContext& ctx = renderCtx.vulkanContext;
-	VkCommandBuffer cmd = ctx.cmdBuffers[imageIndex];
-	beginCommandBuffer(cmd);
-	transitionSwapchainImage(ctx, cmd, imageIndex, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	beginRendering(ctx, cmd, imageIndex);
-	setViewport(ctx, cmd);
-	setScissor(ctx, cmd);
-	bindShaders(renderCtx, cmd);
-	setupDynamicState(ctx, cmd);
 
-	bindUniformBuffers(renderCtx, cmd);
-
-	for (const auto& mesh : scene->Meshes) {
-		drawMesh(cmd, mesh);
-	}
-
-
-	endRendering(cmd);
-	transitionSwapchainImage(ctx, cmd, imageIndex, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-	endCommandBuffer(cmd);
-
-}
 
 
 
 void beginRendering(VulkanContext &ctx, VkCommandBuffer cmd, uint32_t imageIndex) {
-	VkRenderingAttachmentInfo renderAttachInfo{};
-	renderAttachInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-	renderAttachInfo.imageView = ctx.swapchainContext.imageViews[imageIndex];
-	renderAttachInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	renderAttachInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	renderAttachInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	
 	VkClearValue clearColor{};
 	clearColor.color = { {0.0f, 0.0f, 0.0f, 1.0f} };
-	renderAttachInfo.clearValue = clearColor;
+	
+	VkRenderingAttachmentInfo colorAttachInfo{};
+	colorAttachInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	colorAttachInfo.imageView = ctx.swapchainContext.imageViews[imageIndex];
+	colorAttachInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorAttachInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachInfo.clearValue = clearColor;
+
+	VkClearValue clearDepth{};
+	clearDepth.depthStencil.depth = 1.0f;
+	clearDepth.depthStencil.stencil = 0;
+
+	VkRenderingAttachmentInfo depthAttachInfo{};
+	depthAttachInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	depthAttachInfo.imageView = ctx.swapchainContext.allocatedDepthImages[imageIndex].view;
+	depthAttachInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	depthAttachInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	depthAttachInfo.clearValue = clearDepth;
+
+
 
 	VkRenderingInfo renderInfo{};
 	renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -238,8 +314,10 @@ void beginRendering(VulkanContext &ctx, VkCommandBuffer cmd, uint32_t imageIndex
 		ctx.swapchainContext.extent
 	};
 	renderInfo.layerCount = 1;
+
 	renderInfo.colorAttachmentCount = 1;
-	renderInfo.pColorAttachments = &renderAttachInfo;
+	renderInfo.pColorAttachments = &colorAttachInfo;
+	renderInfo.pDepthAttachment = &depthAttachInfo;
 
 	vkCmdBeginRendering(cmd, &renderInfo);
 

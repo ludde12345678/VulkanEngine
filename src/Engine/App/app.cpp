@@ -3,9 +3,7 @@
 #include "app.h"
 
 VulkanApp::VulkanApp() {
-	RenderCtx = RendererContext{};
-	window = nullptr;
-	renderData = RenderData{};
+	AppCtx = AppContext{};
 }
 VulkanApp::~VulkanApp() {
 
@@ -18,83 +16,81 @@ void VulkanApp::run() {
 }
 
 void VulkanApp::init() {
-	glfwInit();
-	window = createWindow();
-	setupGLFWCallbacks(window);
-	RenderCtx.vulkanContext = InitializeVulkan(window);
-	loadDebugScene();
+	// GLFW
+	initWindow(AppCtx);
 
-	createDescriptorLayouts(RenderCtx);
-	createDescriptorPool(RenderCtx);
-	createPipelineLayout(RenderCtx);
+	InitializeVulkan(AppCtx.renderer, AppCtx.window.window);
 
-	RenderCtx.Uniforms = AllocateUniformBuffers(RenderCtx.vulkanContext);
+	if (appConfig::enableImGui) {
+		initImgui(AppCtx);
+	}
 
-	allocateDescriptorSets(RenderCtx);
-	updateDescriptorSets(RenderCtx);
-	createShaders(RenderCtx);
+	AppCtx.scene = createDebugScene(AppCtx.renderer);
+	//AppCtx.scene = loadMeshScene(AppCtx.renderer, "utah_teapot.obj");
+	if (appConfig::runDebugFunction) { DebugFunction(); return; }
+
+
+	
+}
+void VulkanApp::mainLoop() {
+	while (!glfwWindowShouldClose(AppCtx.window.window)) {
+		if (appConfig::enableImGui) {
+			imGuiUpdate(AppCtx);
+		}
+		
+		update();
+		updateInputs(AppCtx.frame);
+		updateCameraUniforms(AppCtx.frame);
+		render();
+		pollWindow(AppCtx.window.window);
+	}
 }
 
+void VulkanApp::update() {
+	auto& camera = AppCtx.frame.Uniforms.camera;
+	auto& shading = AppCtx.frame.Uniforms.shading;
 
-void VulkanApp::mainLoop() {
-	renderData.scene = &scene;
-	while (!glfwWindowShouldClose(window)) {
+	glm::vec3 cameraPos = shading.camerapos;
 
-		DrawFrame(RenderCtx, window, renderData);
-		pollWindow(window);
-		renderData.timeUniform.FrameCount += 1;
-	}
+	// Looking forward along -Z
+	glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+
+	camera.view = glm::lookAt(
+		cameraPos,
+		cameraTarget,
+		glm::vec3(0.0f, 1.0f, 0.0f)
+	);
+
+	float aspect =
+		static_cast<float>(AppCtx.renderer.vulkanContext.swapchainContext.extent.width) /
+		static_cast<float>(AppCtx.renderer.vulkanContext.swapchainContext.extent.height);
+
+	camera.projection = glm::perspective(
+		glm::radians(60.0f),
+		aspect,
+		0.1f,
+		100.0f
+	);
+
+
+	camera.projection[1][1] *= -1;
+}
+void VulkanApp::render() {
+	DrawFrame(AppCtx.renderer, AppCtx.window.window, AppCtx.scene, AppCtx.frame);
 }
 
 void VulkanApp::cleanup() {
-	vkDeviceWaitIdle(RenderCtx.vulkanContext.device);
-	destroyBuffer(RenderCtx.vulkanContext, RenderCtx.Uniforms.timeUB);
-	for (auto& mesh : scene.Meshes) {
-		destroyBuffer(RenderCtx.vulkanContext, mesh.vertexBuffer);
-	}
 
-	destroyShaders(RenderCtx);
-	destroyDescriptorPool(RenderCtx);
-	destroyPipelineLayout(RenderCtx);
-	destroyDescriptorLayouts(RenderCtx);
-	DestroyVulkan(RenderCtx);
+	DestroyVulkan(AppCtx.renderer, AppCtx.scene);
 	
 }
 
-void VulkanApp::printRenderDataDebug() {
-	std::cout << "------------------\nRenderData:";
-	std::cout << "Time counter: " << renderData.timeUniform.FrameCount;
-	std::cout << "ammount of meshes: " << renderData.scene->Meshes.size() << "\n";
+void VulkanApp::printDebugInfo() {
+
 }
 
-void VulkanApp::loadDebugScene()
+void VulkanApp::DebugFunction()
 {
+	//loadMeshScene("utah_teapot.obj");
 
-	Mesh triangle{};
-	Mesh triangle2{};
-	std::vector<float> vertices =
-	{
-		// position          // color
-		-0.75f, -0.433f, 0.0f,   1.0f, 0.0f, 1.0f, 1.0f,
-		-0.25f, -0.433f, 0.0f,   1.0f, 0.0f, 1.0f, 1.0f,
-		-0.50f,  0.433f, 0.0f,   1.0f, 0.0f, 1.0f, 1.0f
-	};
-	std::vector<float> vertices2 =
-	{
-		// position          // color
-		0.25f, -0.433f, 0.0f,   0.0f, 1.0f, 1.0f, 1.0f,
-		0.75f, -0.433f, 0.0f,   0.0f, 1.0f, 1.0f, 1.0f,
-		0.50f,  0.433f, 0.0f,   0.0f, 1.0f, 1.0f, 1.0f
-	};
-	triangle.layout = DefaultVertexLayouts::PositionColor();
-	triangle.vertexBuffer = createVertexBuffer<float>(RenderCtx.vulkanContext, vertices);
-	triangle.vertexCount = 3;
-
-	triangle2.layout = DefaultVertexLayouts::PositionColor();
-	triangle2.vertexBuffer = createVertexBuffer<float>(RenderCtx.vulkanContext, vertices2);
-	triangle2.vertexCount = 3;
-	Scene testScene{};
-	testScene.Meshes.push_back(std::move(triangle));
-	testScene.Meshes.push_back(std::move(triangle2));
-	scene = testScene;
 }

@@ -86,6 +86,7 @@ void createSwapChain(VulkanContext& ctx, GLFWwindow* window) {
         imageViews.push_back(view);
     }
 
+
      // store in context
     SwapchainContext context{};
     context.swapchain = swapchain;
@@ -103,6 +104,74 @@ void createSwapChain(VulkanContext& ctx, GLFWwindow* window) {
     
     ctx.swapchainContext = context;
 
+
+    // depth images:
+    VkFormat depthFormat = selectDepthFormat(ctx);
+    std::vector<AllocatedImage>depthImages;
+    depthImages.reserve(imageCount);
+    for (size_t i = 0; i < imageCount; i++)
+    {
+        VkImageCreateInfo depthImageCreate{};
+        depthImageCreate.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        depthImageCreate.imageType = VK_IMAGE_TYPE_2D;
+        depthImageCreate.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+        depthImageCreate.extent = {
+            ctx.swapchainContext.extent.width,
+            ctx.swapchainContext.extent.height,
+            1
+        };
+        depthImageCreate.mipLevels = 1;
+        depthImageCreate.arrayLayers = 1;
+        depthImageCreate.flags = 0;
+
+        depthImageCreate.format = depthFormat;
+        depthImageCreate.tiling = VK_IMAGE_TILING_OPTIMAL;
+
+        depthImageCreate.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        depthImageCreate.samples = VK_SAMPLE_COUNT_1_BIT;
+
+        depthImageCreate.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VkImage depthImage;
+        VK_CHECK(vkCreateImage(ctx.device, &depthImageCreate, nullptr, &depthImage), "Error creating depth images");
+
+        // allocate
+        AllocatedImage allocImage = createImage(ctx, depthImage);
+
+        VkImageViewCreateInfo ViewCreateInfo{};
+        ViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        ViewCreateInfo.image = depthImage;
+        ViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        ViewCreateInfo.format = depthFormat;
+
+        ViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        ViewCreateInfo.subresourceRange.baseMipLevel = 0;
+        ViewCreateInfo.subresourceRange.levelCount = 1;
+        ViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+        ViewCreateInfo.subresourceRange.layerCount = 1;
+
+        VkImageView depthview;
+        if (vkCreateImageView(ctx.device, &ViewCreateInfo, nullptr, &depthview) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create image view");
+        }
+
+        // assing other values
+        allocImage.view = depthview;
+        allocImage.format = depthFormat;
+        allocImage.extent = {
+            ctx.swapchainContext.extent.width,
+            ctx.swapchainContext.extent.height,
+        };
+        depthImages.push_back(allocImage);
+
+    }
+    ctx.swapchainContext.depthFormat = depthFormat;
+    ctx.swapchainContext.allocatedDepthImages = depthImages;
+
+
     if (VConfig::PRINT_DEBUG_INFO) {
         logSwapChainSupportDetails(swapChainSupport, context);
     }
@@ -116,6 +185,13 @@ void recreateSwapchain(VulkanContext &ctx, GLFWwindow* window) {
 }
 
 void destroySwapchain(VulkanContext &ctx) {
+
+    for (auto Allocimage : ctx.swapchainContext.allocatedDepthImages) {
+        vkDestroyImageView(ctx.device, Allocimage.view, nullptr);
+        destroyImage(ctx, Allocimage);
+    }
+
+
     for (auto imageView : ctx.swapchainContext.imageViews) {
         vkDestroyImageView(ctx.device, imageView, nullptr);
     }
@@ -131,6 +207,24 @@ VkSurfaceFormatKHR selectSwapSurfaceFormat(SwapChainSupportDetails& swapChainSup
         }
     }
     return swapChainSupport.formats[0];
+}
+VkFormat selectDepthFormat(VulkanContext& ctx) {
+
+    for (auto& format : VConfig::preferredDepthFormats) {
+        VkFormatProperties props{};
+        vkGetPhysicalDeviceFormatProperties(
+            ctx.physicalDevice,
+            format,
+            &props
+        );
+        if (props.optimalTilingFeatures &
+            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+        {
+            return format;
+        }
+    }
+    throw std::runtime_error("ERROR: No suitable depth format found");
+    
 }
 VkPresentModeKHR selectPresentMode(SwapChainSupportDetails& swapChainSupport) {
     
@@ -224,6 +318,10 @@ void logSwapChainSupportDetails(const SwapChainSupportDetails& details, const Sw
     }
     std::cout << "\n\Selected Format:\n";
     std::cout << formatToString(context.imageFormat) << "\n";
+
+    std::cout << "\n\Selected Depth Format:\n";
+    std::cout << formatToString(context.depthFormat) << "\n";
+
 
     std::cout << "\Selected Presentation Mode:\n";
     std::cout << presentModeToString(context.presentMode) << "\n";

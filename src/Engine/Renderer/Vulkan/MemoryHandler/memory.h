@@ -13,6 +13,7 @@ namespace MemoryInternal
 {
 	uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 	AllocatedBuffer createBuffer(VulkanContext& ctx, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+	void allocateMemory(VkMemoryRequirements2& requirements, VulkanContext& ctx, VkMemoryPropertyFlags properties, VkDeviceMemory& mem);
 	void copyBuffer(VulkanContext& ctx, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
 	template<typename T>
@@ -37,6 +38,10 @@ namespace MemoryInternal
 void destroyBuffer(VulkanContext& ctx, AllocatedBuffer& buf);
 
 AllocatedBuffer createUniformBuffer(VulkanContext& ctx, VkDeviceSize size);
+
+AllocatedImage createImage(VulkanContext& ctx, VkImage image);
+
+void destroyImage(VulkanContext& ctx, AllocatedImage& img);
 
 template<typename T>
 AllocatedBuffer createVertexBuffer(VulkanContext& ctx, const std::vector<T>& data) {

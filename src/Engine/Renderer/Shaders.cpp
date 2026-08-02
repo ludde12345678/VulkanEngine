@@ -7,8 +7,8 @@ void createShaders(RendererContext& ctx)
 	auto fragCode = readFile((VConfig::SHADER_DIR / "main.frag.spv").string());
 	
 	std::vector<VkShaderCreateInfoEXT> createInfos{
-	createShaderInfo(ctx, vertCode, VK_SHADER_STAGE_VERTEX_BIT),
-	createShaderInfo(ctx, fragCode , VK_SHADER_STAGE_FRAGMENT_BIT)
+	createShaderInfo(ctx, vertCode, VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT),
+	createShaderInfo(ctx, fragCode , VK_SHADER_STAGE_FRAGMENT_BIT, 0)
 	};
 
 	
@@ -38,13 +38,12 @@ void createShaders(RendererContext& ctx)
 
 }
 
-VkShaderCreateInfoEXT createShaderInfo(RendererContext& ctx, const std::vector<char>& code, VkShaderStageFlagBits stage) {
+VkShaderCreateInfoEXT createShaderInfo(RendererContext& ctx, const std::vector<char>& code, VkShaderStageFlagBits stage, VkShaderStageFlags nextStage) {
 	VkShaderCreateInfoEXT shaderInfo{};
 	shaderInfo.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
 	shaderInfo.stage = stage;
-	if (stage == VK_SHADER_STAGE_VERTEX_BIT) {
-		shaderInfo.nextStage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	}
+	shaderInfo.nextStage = nextStage;
+
 	
 
 	shaderInfo.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
@@ -52,8 +51,10 @@ VkShaderCreateInfoEXT createShaderInfo(RendererContext& ctx, const std::vector<c
 	shaderInfo.codeSize = code.size();
 	shaderInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 	shaderInfo.pName = "main";
-	shaderInfo.setLayoutCount = 1;
-	shaderInfo.pSetLayouts = &ctx.descriptors.timeLayout;
+	shaderInfo.setLayoutCount = ctx.Uniforms.layouts.size();
+	shaderInfo.pSetLayouts = ctx.Uniforms.layouts.data();
+	shaderInfo.pushConstantRangeCount = ctx.Uniforms.pushConstants.size();
+	shaderInfo.pPushConstantRanges = ctx.Uniforms.pushConstants.data();
 	shaderInfo.pNext = nullptr;
 
 	return shaderInfo;

@@ -1,37 +1,41 @@
 #version 460
 
 
-layout(location = 0) out vec4 fragColor;
+
 layout(location = 0) in vec3 pos;
-layout(location = 1) in vec4 color;
+layout(location = 1) in vec3 normal;
+layout(location = 2) in vec2 texcoord;
+
+layout(location = 0) out vec3 outWorldPos;
+layout(location = 1) out vec3 outnormal;
+layout(location = 2) out vec2 outtexcoord;
+
 
 layout(set = 0, binding = 0) uniform TimeUBO
 {
     uint FrameCount;
 } Time;
 
+layout(set = 0, binding = 1) uniform CameraUBO
+{
+    mat4 view;
+    mat4 projection;
+} Camera;
+
+layout(push_constant) uniform PushConsts
+{
+    mat4 modelMatrix;
+} pushConsts;
+
 void main()
 {
 
-    float angle = float(Time.FrameCount) * 0.001; // rotation speed
+    vec4 worldPos = pushConsts.modelMatrix * vec4(pos,1.0);
 
-    float c = cos(angle);
-    float s = sin(angle);
+    outnormal = mat3(transpose(inverse(pushConsts.modelMatrix))) * normal;
+    outWorldPos = worldPos.xyz;
+    outtexcoord = texcoord;
 
-    mat2 rotation = mat2(
-        c, -s,
-        s,  c
-    );
+    gl_Position = Camera.projection*Camera.view*worldPos;
 
-    vec2 rotatedPos = rotation * pos.xy;
-
-    gl_Position = vec4(rotatedPos, pos.z, 1.0);
-    float t = float(Time.FrameCount % 3000) / 3000.0;
-
-        fragColor = vec4(
-        t,              // red changes
-        1.0 - t,        // green inverse
-        0.5 + 0.5 * sin(t * 6.283), // blue oscillates
-        1.0
-    );
 }

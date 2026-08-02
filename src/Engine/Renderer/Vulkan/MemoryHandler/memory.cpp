@@ -46,16 +46,7 @@ namespace MemoryInternal {
 		vkGetBufferMemoryRequirements2(ctx.device, &reqInfo, &requirements);
 
 		VkDeviceMemory mem;
-		VkMemoryAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.pNext = nullptr;
-		allocInfo.allocationSize = requirements.memoryRequirements.size;
-		allocInfo.memoryTypeIndex = findMemoryType(
-			ctx.physicalDevice,
-			requirements.memoryRequirements.memoryTypeBits,
-			properties
-		);
-		vkAllocateMemory(ctx.device, &allocInfo, nullptr, &mem);
+		allocateMemory(requirements, ctx, properties, mem);
 
 		VkBindBufferMemoryInfo bindInfo{};
 		bindInfo.sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO;
@@ -71,6 +62,19 @@ namespace MemoryInternal {
 		};
 
 		return AllocBuf;
+	}
+	void allocateMemory(VkMemoryRequirements2& requirements, VulkanContext& ctx, VkMemoryPropertyFlags properties, VkDeviceMemory& mem)
+	{
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.pNext = nullptr;
+		allocInfo.allocationSize = requirements.memoryRequirements.size;
+		allocInfo.memoryTypeIndex = findMemoryType(
+			ctx.physicalDevice,
+			requirements.memoryRequirements.memoryTypeBits,
+			properties
+		);
+		vkAllocateMemory(ctx.device, &allocInfo, nullptr, &mem);
 	}
 	uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 
@@ -96,6 +100,51 @@ namespace MemoryInternal {
 
 AllocatedBuffer createUniformBuffer(VulkanContext& ctx, VkDeviceSize size) {
 	return MemoryInternal::createBuffer(ctx, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+}
+AllocatedImage createImage(VulkanContext& ctx, VkImage image) {
+	
+	VkImageMemoryRequirementsInfo2 reqInfo{};
+	reqInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
+	reqInfo.image = image;
+	
+	VkMemoryRequirements2 requirements{};
+	requirements.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+
+	vkGetImageMemoryRequirements2(
+		ctx.device, 
+		&reqInfo,
+		&requirements);
+	VkDeviceMemory mem;
+	MemoryInternal::allocateMemory(requirements, ctx, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mem);
+
+
+	VkBindImageMemoryInfo bindInfo{};
+	bindInfo.sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
+	bindInfo.image = image;
+	bindInfo.memory = mem;
+	bindInfo.memoryOffset = 0;
+
+	VK_CHECK(vkBindImageMemory2(ctx.device, 1, &bindInfo), "Bind Image Memory Failed");
+	AllocatedImage AllocImg{};
+	AllocImg.image = image;
+	AllocImg.memory = mem;
+	AllocImg.size = requirements.memoryRequirements.size;
+	return AllocImg;
+
+
+}
+void destroyImage(VulkanContext& ctx, AllocatedImage& img) {
+	if (img.image != VK_NULL_HANDLE)
+	{
+		vkDestroyImage(ctx.device, img.image, nullptr);
+		img.image = VK_NULL_HANDLE;
+	}
+
+	if (img.memory != VK_NULL_HANDLE)
+	{
+		vkFreeMemory(ctx.device, img.memory, nullptr);
+		img.memory = VK_NULL_HANDLE;
+	}
 }
 
 void destroyBuffer(VulkanContext& ctx, AllocatedBuffer& buf) {
