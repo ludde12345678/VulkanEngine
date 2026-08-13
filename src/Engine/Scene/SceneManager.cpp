@@ -8,7 +8,7 @@ Scene createDebugScene(RendererContext& ctx)
 	loadDuplicateModels(
 		ctx,
 		"utah_teapot.obj",
-		100,
+		1,
 		DefaultVertexLayouts::PositionNormalTexcoord(),
 		scene
 	);
@@ -16,7 +16,7 @@ Scene createDebugScene(RendererContext& ctx)
 	loadDuplicateModels(
 		ctx,
 		"simple_cube.obj",
-		100,
+		1,
 		DefaultVertexLayouts::PositionNormalTexcoord(),
 		scene
 	);
@@ -24,38 +24,35 @@ Scene createDebugScene(RendererContext& ctx)
 	loadDuplicateModels(
 		ctx,
 		"spaceship.obj",
-		100,
+		1,
 		DefaultVertexLayouts::PositionNormalTexcoord(),
 		scene
 	);
 
 	// Teapots
-	for (size_t i = 0; i < 100; i++)
+	for (size_t i = 0; i < 1; i++)
 	{
-		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(i * 5.0f, 0.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(i * 8.0f),
-			glm::vec3(0, 1, 0));
 
-		scene.objects[i].transform = model;
+
+
+		scene.objects[i].position = glm::vec3(i * 5.0f, 0.0f, 0.0f);
+		scene.objects[i].rotation = glm::vec3(i * 8.0f, 0.0f, 0.0f);
 	}
 
 	// Bunnies
-	for (size_t i = 100; i < 200; i++)
+	for (size_t i = 1; i < 2; i++)
 	{
-		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3((i - 100) * 5.0f, 5.0f, 0.0f));
 
-		scene.objects[i].transform = model;
+
+		scene.objects[i].position = glm::vec3((i - 1) * 5.0f, 5.0f, 0.0f);
 	}
 
 	// Ships
-	for (size_t i = 200; i < 300; i++)
+	for (size_t i = 2; i < 3; i++)
 	{
-		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3((i - 200) * 5.0f, 10.0f, 0.0f));
 
-		scene.objects[i].transform = model;
+
+		scene.objects[i].position = glm::vec3((i - 2) * 5.0f, 10.0f, 0.0f);
 	}
 
 

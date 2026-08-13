@@ -1,13 +1,147 @@
 #include "AssetLoader.h"
+#include <nlohmann/json.hpp>
 
 
-Scene loadglTFScene(RendererContext& ctx, std::string objFilename) {
+Scene loadScene(RendererContext& ctx, std::string SceneFilename) {
 	Scene scene;
-
-
+	// open json file
+	std::ifstream file(AssetConfig::ASSET_DIR / "Scenes" / SceneFilename);
+	if (!file.is_open()) {
+		throw std::runtime_error("Failed to open scene file: " + SceneFilename);
+	}
+	nlohmann::json jsonData;
+	file >> jsonData;
+	file.close();
+	std::string sceneName = jsonData["Name"];
+	if (AssetConfig::PRINT_ASSET_LOAD_INFO) {
+		std::cout << "Loading scene: " << sceneName << std::endl;
+	}
 	
+	// load thextures
+	std::unordered_map<std::string, uint32_t> textureMap;
+	for (const auto& textureData : jsonData["Textures"]) {
+		std::string textureFilename = textureData["Path"];
+		std::string textureName = textureData["Name"];
+		if (AssetConfig::PRINT_ASSET_LOAD_INFO) {
+			std::cout << "Loading texture: " << textureName  << " From path: "<< textureFilename << std::endl;
+		}
+		TextureData texture = loadPNGTexture(textureFilename);
+		Texture tex;
+		populateTexture(ctx, &tex, texture);
+		scene.textures.push_back(std::move(tex));
+		textureMap[textureName] = scene.textures.size() - 1;
+
+	}
+
+	//load materials
+	std::unordered_map<std::string, uint32_t> materialMap;
+	for(const auto& materialData : jsonData["Materials"]) {
+		Material material;
+		std::string materialName = materialData["Name"];
+		if(AssetConfig::PRINT_ASSET_LOAD_INFO) {
+			std::cout << "Loading material: " << materialName << std::endl;
+		}
+		if(materialData.contains("Albedo") && materialData["Albedo"] != "") {
+			material.AlbedoIndex = textureMap[materialData["Albedo"]];
+		}
+		else {
+			material.AlbedoIndex = -1;
+		}
+		if(materialData.contains("Normal") && materialData["Normal"] != "") {
+			material.NormalIndex = textureMap[materialData["Normal"]];
+		}
+		else {
+			material.NormalIndex = -1;
+		}
+		if(materialData.contains("Roughness") && materialData["Roughness"] != "") {
+			material.RoughnessIndex = textureMap[materialData["Roughness"]];
+		}
+		else {
+			material.RoughnessIndex = -1;
+		}
+
+		material.color = glm::vec4(materialData["Color"][0], materialData["Color"][1], materialData["Color"][2], materialData["Color"][3]);
+		material.specularIntensity = materialData["SpecularPower"];
+		scene.materials.push_back(std::move(material));
+		materialMap[materialData["Name"]] = scene.materials.size() - 1;
+	}
+	// load meshes
+	std::unordered_map<std::string, uint32_t> meshMap;
+	for (const auto& meshData : jsonData["Meshes"]) {
+		std::string meshFilename = meshData["Path"];
+		std::string meshName = meshData["Name"];
+		if (AssetConfig::PRINT_ASSET_LOAD_INFO) {
+			std::cout << "Loading mesh: " << meshName << std::endl;
+		}
+		Mesh mesh;
+		MeshData data = loadOBJMeshData(meshFilename);
+		populateMesh(ctx, &mesh, data.vertices, data.indices);
+		mesh.layout = DefaultVertexLayouts::PositionNormalTexcoord();
+		scene.meshes.push_back(std::move(mesh));
+		meshMap[meshName] = scene.meshes.size() - 1;
+	}
+
+	// load objects
+	for (const auto& objectData : jsonData["Objects"]) {
+		Object obj;
+		obj.name = objectData["Name"];
+		if(AssetConfig::PRINT_ASSET_LOAD_INFO) {
+			std::cout << "Loading object: " << obj.name << std::endl;
+		}
+
+		if (objectData.contains("Mesh") && objectData["Mesh"] != "") {
+			obj.meshIndex = meshMap[objectData["Mesh"]];
+		}
+		else {
+			obj.meshIndex = -1;
+		}
+		if (objectData.contains("Material") && objectData["Material"] != "") {
+			obj.materialIndex = materialMap[objectData["Material"]];
+		}
+		else {
+			obj.materialIndex = -1;
+		}
+
+		for (const auto& type : objectData["Type"]) {
+			if (type == "Mesh") {
+				obj.components.push_back(ObjectComponents::Mesh);
+			}
+			else if (type == "Material") {
+				obj.components.push_back(ObjectComponents::Material);
+			}
+			else if (type == "PointLight") {
+				obj.components.push_back(ObjectComponents::PointLight);
+			}
+			else if (type == "Camera") {
+				obj.components.push_back(ObjectComponents::Camera);
+			}
+		}
+
+		obj.position = glm::vec3(objectData["Position"][0], objectData["Position"][1], objectData["Position"][2]);
+		obj.rotation = glm::vec3(objectData["Rotation"][0], objectData["Rotation"][1], objectData["Rotation"][2]);
+		obj.scale = glm::vec3(objectData["Scale"][0], objectData["Scale"][1], objectData["Scale"][2]);
+		scene.objects.push_back(std::move(obj));
+	
+	}
+	// global data
+
+	scene.name = sceneName;
+	if(AssetConfig::PRINT_ASSET_LOAD_INFO) {
+		std::cout << "Done loading scene: " << sceneName << std::endl;
+	}
 	return scene;
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 Scene loadMeshScene(RendererContext& ctx, std::string objFilename) {
@@ -19,7 +153,7 @@ Scene loadMeshScene(RendererContext& ctx, std::string objFilename) {
 void loadDuplicateModels(RendererContext& ctx, std::string filename, uint32_t count, VertexLayout layout, Scene& scene) {
 
 	std::cout << "AssetRoot:" << (AssetConfig::ASSET_DIR).string() << "\n";
-	std::cout << "filePath:" << (AssetConfig::ASSET_DIR / "Models\\" / filename).string() << "\n";
+	std::cout << "filePath:" << (AssetConfig::ASSET_DIR / "Models" / filename).string() << "\n";
 
 	Mesh mesh;
 	MeshData data = loadOBJMeshData(filename);
@@ -55,120 +189,9 @@ void loadModel (RendererContext& ctx, std::string filename, VertexLayout layout,
 
 	Object obj;
 	obj.meshIndex = meshIndex;
-	obj.transform = glm::mat4(1.0f);
 	scene.objects.push_back(obj);
 
 	std::cout << "Done reading mesh" << "\n";
 	
 }
 
-
-MeshData loadOBJMeshData(std::string filename) {
-	std::ifstream file((AssetConfig::ASSET_DIR / "Models\\" / filename).string());
-
-	if (!file) { throw std::runtime_error("Error reading obj file"); }
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
-	std::unordered_map<VertexKey, uint32_t, VertexKeyHash> map;
-	std::vector<glm::vec3> positions;
-	std::vector<glm::vec3> normals;
-	std::vector<glm::vec2> texcoords;
-	file.seekg(0);
-	std::string text;
-	while (std::getline(file, text))
-	{
-		std::stringstream ss(text);
-
-		std::vector<std::string> tokens;
-		std::string token;
-
-		while (ss >> token)
-		{
-			tokens.push_back(token);
-		}
-		if (tokens.empty()) { continue; }
-
-		//std::cout << "[" << text << "] -> " << tokens.size() << '\n';
-		if (tokens[0] == "#") {
-			// Comment, ignore
-			continue;
-		}
-		else if (tokens[0] == "v") {
-			// vertex
-			if (tokens.size() >= 4)
-			{
-				positions.push_back(glm::vec3(std::stof(tokens[1]), std::stof(tokens[2]), std::stof(tokens[3])));
-
-			}
-		}
-		else if (tokens[0] == "vn") {
-			// normals
-			if (tokens.size() >= 4)
-			{
-				normals.push_back(glm::vec3(std::stof(tokens[1]), std::stof(tokens[2]), std::stof(tokens[3])));
-			}
-		}
-		else if (tokens[0] == "vt") {
-			// texture coords
-			if (tokens.size() >= 3)
-			{
-				texcoords.push_back(glm::vec2(std::stof(tokens[1]), std::stof(tokens[2])));
-
-			}
-		}
-		else if (tokens[0] == "f") {
-			// Polygonal face element??
-			for (size_t i = 0; i < 3; i++)
-			{
-				std::vector<uint32_t> ints;
-				std::string temp;
-				for (char character : tokens[i + 1]) {
-					if (character != '/') {
-						temp += character;
-					}
-					else
-					{
-						ints.push_back(std::stoi(temp));
-						temp = "";
-					}
-				}
-				ints.push_back(std::stof(temp));
-
-				VertexKey key{
-				ints[0] - 1,
-				ints[1] - 1,
-				ints[2] - 1
-				};
-
-
-				auto it = map.find(key);
-				if (it != map.end())
-				{
-					// Vertex already exists
-					indices.push_back(it->second);
-				}
-				else {
-
-					Vertex v;
-					v.position = positions[key.pos];
-					v.texCoord = texcoords[key.uv];
-					v.normal = normals[key.normal];
-
-					uint32_t index = static_cast<uint32_t>(vertices.size());
-
-					vertices.push_back(v);
-					indices.push_back(index);
-
-					map[key] = index;
-
-				}
-			}
-		}
-	}
-	MeshData data;
-	data.indices = indices;
-	data.vertices = vertices;
-
-	file.close();
-	return data;
-}

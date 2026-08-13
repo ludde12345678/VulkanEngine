@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include "../App/appConfig.h"
+#include <glm/gtc/matrix_transform.hpp>
 
 void InitializeVulkan(RendererContext &RenderCtx ,GLFWwindow* window) {
 	VulkanContext& ctx = RenderCtx.vulkanContext;
@@ -113,15 +114,23 @@ void recordCmdBuffers(RendererContext& renderCtx, uint32_t imageIndex, Scene* sc
 
 
 	for (auto& obj : scene->objects) {
-
+		if(obj.meshIndex < 0 || obj.meshIndex >= scene->meshes.size()) { continue; }
 		Mesh& mesh = scene->meshes[obj.meshIndex];
-
+		glm::mat4 modelMatrix = glm::mat4(1.0f);
+		modelMatrix = glm::translate(modelMatrix, obj.position);
+		modelMatrix = glm::rotate(modelMatrix, obj.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+		modelMatrix = glm::rotate(modelMatrix, obj.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+		modelMatrix = glm::rotate(modelMatrix, obj.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+		modelMatrix = glm::scale(modelMatrix, obj.scale);
 		vkCmdPushConstants(cmd, renderCtx.pipeline.pipelineLayout,
 			VK_SHADER_STAGE_VERTEX_BIT,
 			0,
-			sizeof(obj.transform),
-			&obj.transform);
+			sizeof(modelMatrix),
+			&modelMatrix);
 		drawMesh(cmd, mesh);
+
+		if(obj.materialIndex < 0 || obj.materialIndex >= scene->materials.size()) { continue; }
+		// handle material
 	}
 
 	if (appConfig::enableImGui) {

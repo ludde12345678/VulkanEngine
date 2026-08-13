@@ -25,8 +25,8 @@ void VulkanApp::init() {
 		initImgui(AppCtx);
 	}
 
-	AppCtx.scene = createDebugScene(AppCtx.renderer);
-	//AppCtx.scene = loadMeshScene(AppCtx.renderer, "utah_teapot.obj");
+	//AppCtx.scene = createDebugScene(AppCtx.renderer);
+	AppCtx.scene = loadScene(AppCtx.renderer, "testscene1.json");
 	if (appConfig::runDebugFunction) { DebugFunction(); return; }
 
 

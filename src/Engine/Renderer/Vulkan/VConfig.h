@@ -5,7 +5,7 @@
 
 namespace VConfig {
 	// instance creation
-	constexpr bool ENABLE_VALIDATION = true;
+	constexpr bool ENABLE_VALIDATION = false;
 	constexpr bool PRINT_DEBUG_INFO = true;
 
 	inline const std::vector<const char*> validationLayers =
@@ -52,7 +52,7 @@ namespace VConfig {
 
 
 	// shaders
-	inline std::filesystem::path SHADER_DIR = "shaders";
+	inline std::filesystem::path SHADER_DIR = "Shaders";
 
 	// default Renderstate
 

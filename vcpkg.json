@@ -5,6 +5,8 @@
   "dependencies": [
     "glfw3",
     "glm",
-    "volk"
+    "volk",
+    "stb",
+    "nlohmann-json"
   ]
 }

@@ -3,7 +3,7 @@
 void updateInputs(RenderData& renderData)
 {
 
-	Camera* cam = &renderData.Camera;
+	Camera* cam = &renderData.camera;
 	glm::vec3 right = glm::normalize(glm::cross(cam->forward, cam->up));
 	if (renderData.inputState.W) {
 		cam->position += (cam->forward * cam->moveSpeed);

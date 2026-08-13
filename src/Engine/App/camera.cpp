@@ -2,7 +2,7 @@
 
 
 void updateCameraUniforms(RenderData& renderData) {
-	Camera *cam = &renderData.Camera;
+	Camera *cam = &renderData.camera;
 	CameraUBO* ubo = &renderData.Uniforms.camera;
 
 

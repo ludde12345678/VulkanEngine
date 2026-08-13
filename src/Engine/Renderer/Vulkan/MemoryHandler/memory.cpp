@@ -1,5 +1,7 @@
 #include "memory.h"
 #include "../VCommands.h"
+#include "../VUtils.h"
+#include "../VImage.h"
 
 
 // private
@@ -101,7 +103,43 @@ namespace MemoryInternal {
 AllocatedBuffer createUniformBuffer(VulkanContext& ctx, VkDeviceSize size) {
 	return MemoryInternal::createBuffer(ctx, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
-AllocatedImage createImage(VulkanContext& ctx, VkImage image) {
+
+AllocatedImage createTextureImage(VulkanContext& ctx, VkImage image, std::vector<uint8_t>& pixelData, VkExtent2D extent) {
+	VkDeviceSize imageSize = extent.width * extent.height * 4;
+
+	AllocatedBuffer stagingBuffer = MemoryInternal::createStagingBuffer<uint8_t>(ctx, pixelData, imageSize);
+	AllocatedImage allocatedImage = allocateImage(ctx, image);
+	
+
+	VkCommandBuffer cmd = beginSingleTimeCommands(ctx);
+	
+	// transition image
+	transitionImageLayout(cmd, allocatedImage.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+	VkBufferImageCopy copyRegion{};
+	copyRegion.bufferOffset = 0;
+	copyRegion.bufferRowLength = 0;
+	copyRegion.bufferImageHeight = 0;
+	copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	copyRegion.imageSubresource.mipLevel = 0;
+	copyRegion.imageSubresource.baseArrayLayer = 0;
+	copyRegion.imageSubresource.layerCount = 1;
+	copyRegion.imageOffset = { 0, 0, 0 };
+	copyRegion.imageExtent = { extent.width, extent.height, 1 };
+
+	vkCmdCopyBufferToImage(cmd, stagingBuffer.buffer, allocatedImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+	transitionImageLayout(cmd, allocatedImage.image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	endSingleTimeCommands(ctx, cmd);
+	destroyBuffer(ctx, stagingBuffer);
+	
+	allocatedImage.extent = extent;
+	allocatedImage.format = VK_FORMAT_R8G8B8A8_UNORM;
+
+	return allocatedImage;
+
+}
+
+AllocatedImage allocateImage(VulkanContext& ctx, VkImage image) {
 	
 	VkImageMemoryRequirementsInfo2 reqInfo{};
 	reqInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;

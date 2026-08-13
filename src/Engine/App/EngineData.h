@@ -38,6 +38,6 @@ struct Camera {
 struct RenderData
 {
 	UBOs Uniforms;
-	Camera Camera;
+	Camera camera;
 	InputState inputState;
 };

@@ -1,6 +1,6 @@
 
 #include "VDevice.h"
-
+#include <cstring>
 
 void pickPhysicalDevice(VulkanContext& ctx) {
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;

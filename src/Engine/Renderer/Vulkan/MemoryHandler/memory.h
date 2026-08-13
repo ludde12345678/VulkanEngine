@@ -4,10 +4,11 @@
 #include <glm/glm.hpp>
 #include <volk.h>
 #include <iostream>
-
+#include <cstring>
 #include "MemStructs.h"
 #include "../VContext.h"
 #include "../VUtils.h"
+
 
 namespace MemoryInternal
 {
@@ -39,7 +40,9 @@ void destroyBuffer(VulkanContext& ctx, AllocatedBuffer& buf);
 
 AllocatedBuffer createUniformBuffer(VulkanContext& ctx, VkDeviceSize size);
 
-AllocatedImage createImage(VulkanContext& ctx, VkImage image);
+AllocatedImage createTextureImage(VulkanContext &ctx, VkImage image, std::vector<uint8_t>& pixelData, VkExtent2D extent);
+
+AllocatedImage allocateImage(VulkanContext& ctx, VkImage image);
 
 void destroyImage(VulkanContext& ctx, AllocatedImage& img);
 
@@ -79,3 +82,4 @@ void updateUniformBuffer(VulkanContext& ctx, AllocatedBuffer& buffer, const T& d
 	memcpy(mapped, &data, sizeof(T));
 	vkUnmapMemory(ctx.device, buffer.memory);
 }
+

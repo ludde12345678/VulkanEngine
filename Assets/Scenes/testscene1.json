@@ -1,0 +1,55 @@
+{
+    "Name": "Test Scene 1",
+    "Objects": [
+        {
+            "Name": "Main Camera",
+            "Type": ["Camera"],
+            "Position": [0, 1, -10],
+            "Rotation": [0, 0, 0],
+            "Scale": [1, 1, 1]
+        },
+        {
+            "Name": "Point Light",
+            "Type": ["PointLight"],
+            "Position": [0, 10, 0],
+            "Rotation": [50, -30, 0],
+            "Scale": [1, 1, 1],
+            "Color": [1, 1, 1],
+            "Intensity": 1.0
+        },
+        {
+            "Name": "Teapot",
+            "Type": ["Mesh", "Material"],
+            "Mesh": "utah_teapot_mesh",
+            "Material": "utah_teapot_material",
+            "Position": [0, 0.5, 0],
+            "Rotation": [0, 45, 0],
+            "Scale": [1, 1, 1]
+
+        }
+    ],
+
+    "Materials": [
+        {
+            "Name": "utah_teapot_material",
+            "Albedo": "utah_teapot_albedo",
+
+            "Color": [1, 1, 1, 1],
+            "SpecularPower": 32.0
+        }
+    ],
+
+    
+    "Meshes": [
+        {
+            "Name": "utah_teapot_mesh",
+            "Path": "Assets/Models/utah_teapot.obj"
+        }
+    ],
+    "Textures": [
+        {
+            "Name": "utah_teapot_albedo",
+            "Path": "Assets/Textures/utah_teapot_albedo.png"
+        }
+    ]
+}

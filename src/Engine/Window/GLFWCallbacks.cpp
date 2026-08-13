@@ -68,7 +68,7 @@ void GLFW_CursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
     
     AppContext* appCtx = static_cast<AppContext*>(glfwGetWindowUserPointer(window));
 
-    Camera& cam = appCtx->frame.Camera;
+    Camera& cam = appCtx->frame.camera;
 
     if (appCtx->frame.inputState.mouselook) {
 
@@ -111,7 +111,7 @@ void GLFW_MouseButtonCallback(GLFWwindow* window, int button, int action, int mo
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         appCtx->frame.inputState.mouselook = true;
-        appCtx->frame.Camera.firstMouse = true;
+        appCtx->frame.camera.firstMouse = true;
     }
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);

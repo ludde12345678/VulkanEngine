@@ -2,7 +2,7 @@
 
 void createShaders(RendererContext& ctx)
 {
-
+	std::cout << (VConfig::SHADER_DIR / "main.vert.spv").string();
 	auto vertCode = readFile((VConfig::SHADER_DIR / "main.vert.spv").string());
 	auto fragCode = readFile((VConfig::SHADER_DIR / "main.frag.spv").string());
 	

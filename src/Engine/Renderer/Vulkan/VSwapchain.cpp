@@ -138,7 +138,7 @@ void createSwapChain(VulkanContext& ctx, GLFWwindow* window) {
         VK_CHECK(vkCreateImage(ctx.device, &depthImageCreate, nullptr, &depthImage), "Error creating depth images");
 
         // allocate
-        AllocatedImage allocImage = createImage(ctx, depthImage);
+        AllocatedImage allocImage = allocateImage(ctx, depthImage);
 
         VkImageViewCreateInfo ViewCreateInfo{};
         ViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
