@@ -1,0 +1,105 @@
+cmake_minimum_required(VERSION 3.25)
+
+
+file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+)
+
+add_library(Engine STATIC)
+
+target_sources(Engine
+    PRIVATE
+        ${ENGINE_SOURCES}
+)
+
+target_include_directories(Engine
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_include_directories(Engine PUBLIC
+    ${CMAKE_SOURCE_DIR}/external/imgui
+    ${CMAKE_SOURCE_DIR}/external/imgui/backends
+)
+
+target_sources(Engine PRIVATE
+    ${CMAKE_SOURCE_DIR}/external/imgui/imgui.cpp
+    ${CMAKE_SOURCE_DIR}/external/imgui/imgui_draw.cpp
+    ${CMAKE_SOURCE_DIR}/external/imgui/imgui_tables.cpp
+    ${CMAKE_SOURCE_DIR}/external/imgui/imgui_widgets.cpp
+    ${CMAKE_SOURCE_DIR}/external/imgui/imgui_demo.cpp
+
+    ${CMAKE_SOURCE_DIR}/external/imgui/backends/imgui_impl_glfw.cpp
+    ${CMAKE_SOURCE_DIR}/external/imgui/backends/imgui_impl_vulkan.cpp
+)
+
+target_compile_definitions(Engine PRIVATE
+    IMGUI_IMPL_VULKAN_USE_VOLK
+    IMGUI_DISABLE_OBSOLETE_FUNCTIONS
+    VK_NO_PROTOTYPES
+    VK_USE_PLATFORM_WIN32_KHR
+)
+
+
+# Find and link packages from vcpkg manifest
+find_package(glfw3 CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
+find_package(Vulkan REQUIRED)
+find_package(volk CONFIG REQUIRED)
+#find_package(imgui CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+
+
+target_link_libraries(Engine PUBLIC
+glfw
+glm::glm
+volk::volk
+nlohmann_json::nlohmann_json
+)
+
+message("Searching for shaders")
+
+set(SHADERS_IN_DIR
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Shaders"
+)
+
+set(SHADERS_OUT_DIR
+    "${CMAKE_SOURCE_DIR}/Assets/Shaders"
+)
+
+file(GLOB SHADERS CONFIGURE_DEPENDS
+    "${SHADERS_IN_DIR}/*.vert"
+    "${SHADERS_IN_DIR}/*.frag"
+)
+
+set(SHADER_OUT_NAMES)
+
+foreach(SHADER ${SHADERS})
+    get_filename_component(SHADER_NAME ${SHADER} NAME)
+    message("Shader:" + ${SHADER_NAME} + " Found")
+    set(SHADER_OUT
+        "${SHADERS_OUT_DIR}/${SHADER_NAME}.spv"
+    )
+
+    add_custom_command(
+        OUTPUT ${SHADER_OUT}
+        COMMAND ${Vulkan_GLSLC_EXECUTABLE}
+            ${SHADER}
+            -o ${SHADER_OUT}
+        DEPENDS ${SHADER}
+        VERBATIM
+    )
+
+    list(APPEND SHADER_OUT_NAMES ${SHADER_OUT})
+endforeach()
+
+add_custom_target(EngineShaders
+    DEPENDS ${SHADER_OUT_NAMES}
+)
+
+add_dependencies(Engine EngineShaders)

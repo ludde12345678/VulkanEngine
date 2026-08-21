@@ -35,6 +35,13 @@ bld/
 [Bb]uild/
 .vscode/
 
+# Ignore Assets
+Assets/Models/*
+!Assets/Models/.gitkeep
+
+Assets/Textures/*
+!Assets/Textures/.gitkeep
+
 # Visual Studio 2015/2017 cache/options directory
 .vs/
 # Uncomment if you have tasks that create the project's static files in wwwroot

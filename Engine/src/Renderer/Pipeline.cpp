@@ -1,0 +1,136 @@
+#include "Pipeline.h"
+
+
+void setupDynamicState(VulkanContext& ctx, VkCommandBuffer cmd)
+{
+	vkCmdSetPrimitiveTopologyEXT(
+		cmd,
+		ctx.currentGraphicsState.topology
+	);
+
+	vkCmdSetCullModeEXT(
+		cmd,
+		ctx.currentGraphicsState.cullMode
+	);
+	vkCmdSetFrontFaceEXT(
+		cmd,
+		ctx.currentGraphicsState.frontFace
+	);
+	vkCmdSetPolygonModeEXT(
+		cmd,
+		ctx.currentGraphicsState.polygonMode
+	);
+	vkCmdSetRasterizerDiscardEnableEXT(
+		cmd,
+		ctx.currentGraphicsState.rasterizerDiscard
+	);
+	vkCmdSetDepthTestEnableEXT(
+		cmd,
+		ctx.currentGraphicsState.depthTest
+	);
+	vkCmdSetDepthCompareOpEXT(
+		cmd,
+		ctx.currentGraphicsState.compareOp);
+	vkCmdSetDepthBiasEnableEXT(
+		cmd,
+		ctx.currentGraphicsState.depthBias
+	);
+	vkCmdSetDepthWriteEnableEXT(
+		cmd,
+		ctx.currentGraphicsState.depthWrite
+	);
+	vkCmdSetStencilTestEnableEXT(
+		cmd,
+		ctx.currentGraphicsState.stencilTest
+	);
+	vkCmdSetPrimitiveRestartEnableEXT(
+		cmd,
+		VK_FALSE
+	);
+	vkCmdSetRasterizationSamplesEXT(
+		cmd,
+		ctx.currentGraphicsState.samples
+	);
+	vkCmdSetSampleMaskEXT(
+		cmd,
+		ctx.currentGraphicsState.samples,
+		&ctx.currentGraphicsState.sampleMask
+	);
+	vkCmdSetAlphaToCoverageEnableEXT(
+		cmd,
+		ctx.currentGraphicsState.alphaToCoverage
+	);
+	vkCmdSetColorBlendEnableEXT(
+		cmd,
+		0,          // first attachment
+		1,          // number of attachments
+		&ctx.currentGraphicsState.colorBlendEnable
+	);
+
+	VkColorBlendEquationEXT blendEquation{};
+
+	blendEquation.srcColorBlendFactor =
+		VK_BLEND_FACTOR_ONE;
+	blendEquation.dstColorBlendFactor =
+		VK_BLEND_FACTOR_ZERO;
+	blendEquation.colorBlendOp =
+		VK_BLEND_OP_ADD;
+
+	blendEquation.srcAlphaBlendFactor =
+		VK_BLEND_FACTOR_ONE;
+	blendEquation.dstAlphaBlendFactor =
+		VK_BLEND_FACTOR_ZERO;
+	blendEquation.alphaBlendOp =
+		VK_BLEND_OP_ADD;
+
+	vkCmdSetColorBlendEquationEXT(
+		cmd,
+		0,
+		1,
+		&blendEquation
+	);
+
+	VkColorComponentFlags mask =
+		VK_COLOR_COMPONENT_R_BIT |
+		VK_COLOR_COMPONENT_G_BIT |
+		VK_COLOR_COMPONENT_B_BIT |
+		VK_COLOR_COMPONENT_A_BIT;
+
+	vkCmdSetColorWriteMaskEXT(
+		cmd,
+		0,
+		1,
+		&mask
+	);
+
+}
+
+void createPipelineLayout(RendererContext& ctx) {
+
+
+	VkPipelineLayoutCreateInfo layoutCreateInfo{};
+	layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+
+	// descriptors
+	layoutCreateInfo.setLayoutCount = ctx.Descriptors.layouts.size();
+	layoutCreateInfo.pSetLayouts = ctx.Descriptors.layouts.data();
+
+	//push constants
+	layoutCreateInfo.pushConstantRangeCount = ctx.Descriptors.pushConstants.size();
+	layoutCreateInfo.pPushConstantRanges = ctx.Descriptors.pushConstants.data();
+
+
+	VkPipelineLayout layout;
+	if (vkCreatePipelineLayout(ctx.vulkanContext.device, &layoutCreateInfo, nullptr, &layout) != VK_SUCCESS) { throw std::runtime_error("Error: Pipeline layout creation failed"); }
+
+	PipelineContext pipeCtx{};
+	pipeCtx.pipelineLayout = layout;
+
+	ctx.pipeline = pipeCtx;
+
+}
+void destroyPipelineLayout(RendererContext& ctx) {
+
+	vkDestroyPipelineLayout(ctx.vulkanContext.device, ctx.pipeline.pipelineLayout, nullptr);
+
+}
