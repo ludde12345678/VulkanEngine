@@ -10,29 +10,67 @@ enum class SwapchainStatus
 	NeedsRecreation,
 	Invalid
 };
+struct VulkanDepthState
+{
+	VkBool32 testEnable = VK_FALSE;
+	VkBool32 writeEnable = VK_FALSE;
+	VkCompareOp compareOp = VK_COMPARE_OP_EQUAL;
 
+	VkBool32 biasEnable = VK_FALSE;
+
+	VkDepthBiasInfoEXT biasInfo{
+		.sType = VK_STRUCTURE_TYPE_DEPTH_BIAS_INFO_EXT,
+		.depthBiasConstantFactor = 1.0f,
+		.depthBiasClamp = 0.0f,
+		.depthBiasSlopeFactor = 1.0f
+	};
+};
+
+struct VulkanStencilState
+{
+	VkBool32 testEnable = VK_FALSE;
+
+	VkStencilOpState front{};
+	VkStencilOpState back{};
+};
 struct VulkanGraphicsState
 {
+	// assembly
 	VkPrimitiveTopology topology;
-
+	VkBool32 primitiveRestart;
+	float lineWidth;
+	// rasterisation
 	VkCullModeFlags cullMode;
 	VkFrontFace frontFace;
-
 	VkPolygonMode polygonMode;
+	VkBool32 rasterizerDiscard;
 
-	bool rasterizerDiscard;
-
-	bool depthTest;
-	VkCompareOp compareOp;
-	bool depthBias;
-	bool depthWrite;
-	bool stencilTest;
-
+	// depth
+	VulkanDepthState depth{};
+	
+	// stencil
+	VulkanStencilState stencil{};
+	
+	//MSAA
 	VkSampleCountFlagBits samples;
 	VkSampleMask sampleMask;
+	VkBool32 alphaToCoverage;
 
-	bool alphaToCoverage;
-	VkBool32 colorBlendEnable;
+
+	// color blending
+	std::vector<VkBool32> colorBlendEnables;
+	std::vector<VkColorBlendEquationEXT> blendEquations;
+	std::vector<VkColorComponentFlags> colorWriteMasks;
+
+};
+struct RenderTarget {
+	VkImage image;
+	VkImageView imageView;
+
+	VkFormat format = VK_FORMAT_UNDEFINED;
+	VkExtent2D extent{};
+	VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+
 };
 
 
@@ -40,20 +78,15 @@ struct SwapchainContext
 {
 
 	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
-	SwapchainStatus status;
+	SwapchainStatus status = SwapchainStatus::Ok;
 	uint32_t imageCount = 0;
-	std::vector<VkImage> images;
-	std::vector<VkImageView> imageViews;
+
+	std::vector<RenderTarget> colorTargets;
+	std::vector<RenderTarget> depthTargets;
 
 	std::vector<AllocatedImage> allocatedDepthImages;
 
-
-	std::vector<VkImageLayout> imageLayouts;
-
-	VkFormat imageFormat;
-	VkFormat depthFormat;
-	VkExtent2D extent;
-	VkPresentModeKHR presentMode;
+	VkPresentModeKHR presentMode = VkPresentModeKHR::VK_PRESENT_MODE_IMMEDIATE_KHR;
 };
 
 struct QueueContext
@@ -86,7 +119,6 @@ struct VulkanContext
 	VkCommandPool cmdPool;
 	std::vector<VkCommandBuffer> cmdBuffers;
 	SyncContext syncContext;
-	VulkanGraphicsState currentGraphicsState;
 
 
 };

@@ -40,6 +40,8 @@ void destroyBuffer(VulkanContext& ctx, AllocatedBuffer& buf);
 
 AllocatedBuffer createUniformBuffer(VulkanContext& ctx, VkDeviceSize size);
 
+AllocatedBuffer createStorageBuffer(VulkanContext& ctx, VkDeviceSize size);
+
 AllocatedImage createTextureImage(VulkanContext &ctx, VkImage image, std::vector<uint8_t>& pixelData, VkExtent2D extent);
 
 AllocatedImage allocateImage(VulkanContext& ctx, VkImage image);
@@ -75,11 +77,24 @@ AllocatedBuffer createIndexBuffer(VulkanContext& ctx, const std::vector<T>& data
 
 
 template<typename T>
-void updateUniformBuffer(VulkanContext& ctx, AllocatedBuffer& buffer, const T& data)
+void updateBuffer(VulkanContext& ctx, AllocatedBuffer& buffer, const T& data)
 {
 	void* mapped;
 	vkMapMemory(ctx.device, buffer.memory, 0,sizeof(T), 0, &mapped);
 	memcpy(mapped, &data, sizeof(T));
 	vkUnmapMemory(ctx.device, buffer.memory);
 }
+template<typename T>
+void updateBuffer(
+	VulkanContext& ctx,
+	AllocatedBuffer& buffer,
+	const std::vector<T>& data)
+{
+	void* mapped;
 
+	VkDeviceSize size = sizeof(T) * data.size();
+
+	vkMapMemory(ctx.device, buffer.memory, 0, size, 0, &mapped);
+	memcpy(mapped, data.data(), size);
+	vkUnmapMemory(ctx.device, buffer.memory);
+}

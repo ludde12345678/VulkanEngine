@@ -8,7 +8,7 @@
 #include "../AssetManager/AssetTypes.h"
 #include "RendererContext.h"
 
-Texture createDefaultTexture(RendererContext& ctx);
+void createDefaultTexture(RendererContext& ctx, std::vector<Texture>& textures);
 
 void populateMesh(RendererContext& ctx, Mesh* mesh, std::vector<Vertex> vert, std::vector<uint32_t> indices);
 

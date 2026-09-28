@@ -18,7 +18,13 @@ enum class Key {
 	SPACE,
 	LALT,
 
-
+	ESC,
+	F1,
+	F2,
+	F3,
+	F4,
+	F5,
+	F6,
 
 	COUNT
 };

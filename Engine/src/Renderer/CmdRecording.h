@@ -37,12 +37,12 @@
 
 
 
-void recordCmdBuffer(RendererContext& renderCtx, ResourceContext& resources, uint32_t imageIndex, Scene* scene);
+void renderScene( VkCommandBuffer cmd, RendererContext& renderCtx, Scene& scene, ResourceContext& resources);
 
-void beginRendering(VulkanContext& ctx, VkCommandBuffer cmd, uint32_t imageIndex);
+void beginRendering(VulkanContext& ctx, VkCommandBuffer cmd, std::optional <RenderTarget> color, std::optional <RenderTarget> depth);
 
-void setViewport(VulkanContext& ctx, VkCommandBuffer cmd);
+void setViewport(VulkanContext& ctx, VkCommandBuffer cmd, RenderTarget target);
 
-void setScissor(VulkanContext& ctx, VkCommandBuffer cmd);
+void setScissor(VulkanContext& ctx, VkCommandBuffer cmd, RenderTarget target);
 
 void endRendering(VkCommandBuffer cmd);

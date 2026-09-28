@@ -1,10 +1,19 @@
 #include "Desciptors.h"
 #include "RendererConfig.h"
-#include "../EngineData.h"
 
-void setupDescriptorResources(RendererContext& ctx, ResourceContext& resources, Scene& scene)
+void setupDescriptorResources(RendererContext& ctx, ResourceContext& resources, Scene& scene, uint32_t materialCount)
 {
-	createDescriptorInfos(ctx);
+	// count lights
+	uint32_t lightCount = 0;
+	uint32_t ShadowCount = 0;
+	for (auto& obj : scene.objects) {
+		if (obj.light.has_value()) {
+			lightCount++;
+			if (obj.light.value().castsShadows) { ShadowCount++; }
+		}
+	}
+	if (ShadowCount > VConfig::MAX_SHADOW_MAPS) { throw std::runtime_error("ERROR: Shadowmaps Exceed MAX"); }
+	createDescriptorInfos(ctx, lightCount, materialCount);
 
 	createDescriptorLayouts(ctx);
 	createDescriptorPool(ctx);
@@ -25,67 +34,118 @@ void setupDescriptorResources(RendererContext& ctx, ResourceContext& resources, 
 		}
 		else
 		{
-			ctx.Descriptors.textures.textures.push_back(&resources.defaultTexture);
+			ctx.Descriptors.textures.textures.push_back(&resources.textures[0]); // default white
 		}
 	}
 
 
 
 	updateDescriptorSets(ctx);
+
+	if (VConfig::PRINT_DEBUG_INFO) {
+		std::cout << "Descriptor Storage buffer sizes:" << "\n";
+		std::cout << "Light count: " << lightCount << "\n";
+		std::cout << "Light size: " << sizeof(Light) << "\n";
+		std::cout << "Light buffer size: " << ctx.Descriptors.lights.size << "\n";
+
+		std::cout << "Material count: " << materialCount << "\n";
+		std::cout << "Material size: " << sizeof(Material) << "\n";
+		std::cout << "Material buffer size: " << ctx.Descriptors.materials.size << "\n";
+	}
 }
 
-void createDescriptorInfos(RendererContext& ctx)
+void createDescriptorInfos(RendererContext& ctx, uint32_t lightCount, uint32_t materialCount)
 {
 	ctx.Descriptors.Descriptors =
 	{
-		&ctx.Descriptors.time,
+		&ctx.Descriptors.frame,
 		&ctx.Descriptors.camera,
-		&ctx.Descriptors.shading,
-		&ctx.Descriptors.textures
+		&ctx.Descriptors.lights,
+		&ctx.Descriptors.materials,
+		&ctx.Descriptors.textures,
+		&ctx.Descriptors.ShadowMaps
 	};
+	// global
+#pragma region GLOBAL(SET 0)
+	ctx.Descriptors.frame.info = DescriptorInfo
+	{
+		.name = "Frame",
+		.binding = 0,
+		.set = +DescSets::GLOBAL,
+		.count = 1,
+		.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		.stages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+	};
+	ctx.Descriptors.frame.size = sizeof(FrameUBO);
+
+	ctx.Descriptors.camera.info = DescriptorInfo
+	{
+		.name = "Camera",
+		.binding = 1,
+		.set = +DescSets::GLOBAL,
+		.count = 1,
+		.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		.stages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+	};
+	ctx.Descriptors.camera.size = sizeof(CameraUBO);
+
+	ctx.Descriptors.lights.info = DescriptorInfo
+	{
+		.name = "Lights",
+		.binding = 2,
+		.set = +DescSets::GLOBAL,
+		.count = 1,
+		.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		.stages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+	};
+	ctx.Descriptors.lights.size = lightCount * sizeof(Light);
+#pragma endregion
+
+#pragma region MATERIAL(SET 1)
+	// material
+	ctx.Descriptors.materials.info = DescriptorInfo
+	{
+		.name = "Materials",
+		.binding = 0,
+		.set = +DescSets::MATERIAL,
+		.count = 1,
+		.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		.stages = VK_SHADER_STAGE_FRAGMENT_BIT
+	};
+	ctx.Descriptors.materials.size = materialCount * sizeof(Material);
 
 	// textures
 	ctx.Descriptors.textures.info = DescriptorInfo
 	{
 		.name = "Textures",
-		.binding = 3,
-		.set = 0,
+		.binding = 1,
+		.set = +DescSets::MATERIAL,
 		.count = VConfig::MAX_TEXTURES,
 		.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-		.stages = VK_SHADER_STAGE_FRAGMENT_BIT
+		.stages = VK_SHADER_STAGE_FRAGMENT_BIT,
+		.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 	};
+#pragma endregion
 
+#pragma region SHADOW(SET 2)
 
-	ctx.Descriptors.time.info = DescriptorInfo
+	ctx.Descriptors.ShadowMaps.info = DescriptorInfo
 	{
-		.name = "Time",
-		.binding = 0,
-		.set = 0,
-		.count = 1,
-		.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		.stages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
-	};
-	ctx.Descriptors.time.size = sizeof(TimeUBO);
-	ctx.Descriptors.camera.info = DescriptorInfo
-	{
-		.name = "Camera",
+		.name = "Shadow Maps",
 		.binding = 1,
-		.set = 0,
-		.count = 1,
-		.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		.stages = VK_SHADER_STAGE_VERTEX_BIT
+		.set = +DescSets::SHADOW,
+		.count = VConfig::MAX_SHADOW_MAPS,
+		.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.stages = VK_SHADER_STAGE_FRAGMENT_BIT,
+		.layout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL
 	};
-	ctx.Descriptors.camera.size = sizeof(CameraUBO);
-	ctx.Descriptors.shading.info = DescriptorInfo
-	{
-		.name = "Shading",
-		.binding = 2,
-		.set = 0,
-		.count = 1,
-		.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		.stages = VK_SHADER_STAGE_FRAGMENT_BIT
-	};
-	ctx.Descriptors.shading.size = sizeof(ShadingUBO);
+
+#pragma endregion
+
+
+
+
+
 
 	// push constants
 	ctx.Descriptors.pushConstants =
@@ -93,9 +153,8 @@ void createDescriptorInfos(RendererContext& ctx)
 		{
 			.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 			.offset = 0,
-			.size = sizeof(PushConstants)
+			.size = sizeof(PushConstants) + sizeof(uint32_t)
 		},
-
 	};
 }
 
@@ -137,21 +196,29 @@ void destroyDescriptorLayouts(RendererContext& ctx) {
 }
 void createDescriptorPool(RendererContext& ctx) {
 
-	VkDescriptorPoolSize poolSizes[] =
-	{
-	{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(ctx.Descriptors.Descriptors.size()) },
-	{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VConfig::MAX_TEXTURES },
-	};
+	// Count how many allocations are needed
+	std::unordered_map<VkDescriptorType, uint32_t> count;
+	for (const auto& desc : ctx.Descriptors.Descriptors) {
+		count[desc->info.type] += desc->info.count;
+	}
+	std::vector<VkDescriptorPoolSize> poolSizes;
+	for (const auto& [type, count] : count) {
+		poolSizes.push_back(
+			{
+				.type = type,
+				.descriptorCount = count
+			}
+		);
+	}
 
 	VkDescriptorPoolCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	createInfo.poolSizeCount = 2;
-	createInfo.pPoolSizes = poolSizes;
+	createInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+	createInfo.pPoolSizes = poolSizes.data();
 	createInfo.maxSets = static_cast<uint32_t>(ctx.Descriptors.layouts.size());
 
-	VkDescriptorPool descPool;
-	VK_CHECK(vkCreateDescriptorPool(ctx.vulkanContext.device, &createInfo, nullptr, &descPool), "ERROR: Failed to create descriptor pool");
-	ctx.DescPool = descPool;
+	VK_CHECK(vkCreateDescriptorPool(ctx.vulkanContext.device, &createInfo, nullptr, &ctx.DescPool), "ERROR: Failed to create descriptor pool");
+
 
 	// create imgui desc pool
 	VkDescriptorPoolSize poolSizesIMGUI[] =
@@ -194,14 +261,21 @@ void updateDescriptorSets(RendererContext& ctx) {
 	std::vector<VkWriteDescriptorSet> writes;
 	std::vector<VkDescriptorBufferInfo> bufferInfos;
 	std::vector<VkDescriptorImageInfo> imageInfos;
+	uint32_t ImageCount = 0;
+	for (auto& Desc : ctx.Descriptors.Descriptors) {
+		if (Desc->info.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+			ImageCount += Desc->info.count;
+		}
+	}
 
-	imageInfos.reserve(VConfig::MAX_TEXTURES);
+	imageInfos.reserve(ImageCount);
 	bufferInfos.reserve(ctx.Descriptors.Descriptors.size());
 	writes.reserve(ctx.Descriptors.Descriptors.size());
 
 	for (auto& Desc : ctx.Descriptors.Descriptors) {
+		if (Desc->info.count == 0) { continue; }
 		VkWriteDescriptorSet write{};
-
+		
 		write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		write.dstSet = ctx.Descriptors.sets[Desc->info.set];
 		write.dstBinding = Desc->info.binding;
@@ -212,9 +286,20 @@ void updateDescriptorSets(RendererContext& ctx) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
 			VkDescriptorBufferInfo bufferInfo{};
 
-			bufferInfo.buffer = static_cast<UniformResources*>(Desc)->buffer.buffer;
+			bufferInfo.buffer = static_cast<BufferResource*>(Desc)->buffer.buffer;
 			bufferInfo.offset = 0;
-			bufferInfo.range = static_cast<UniformResources*>(Desc)->size;
+			bufferInfo.range = static_cast<BufferResource*>(Desc)->size;
+
+			bufferInfos.push_back(bufferInfo);
+			write.pBufferInfo = &bufferInfos.back();
+			break;
+		}
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+			VkDescriptorBufferInfo bufferInfo{};
+
+			bufferInfo.buffer = static_cast<BufferResource*>(Desc)->buffer.buffer;
+			bufferInfo.offset = 0;
+			bufferInfo.range = static_cast<BufferResource*>(Desc)->size;
 
 			bufferInfos.push_back(bufferInfo);
 			write.pBufferInfo = &bufferInfos.back();
@@ -225,9 +310,10 @@ void updateDescriptorSets(RendererContext& ctx) {
 			for (size_t i = 0; i < Desc->info.count; i++)
 			{
 				VkDescriptorImageInfo info{};
-				info.sampler = static_cast<TextureResources*>(Desc)->textures[i]->sampler;
-				info.imageView = static_cast<TextureResources*>(Desc)->textures[i]->image.view;
-				info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				TextureResources* texRe = static_cast<TextureResources*>(Desc);
+				info.sampler = texRe->textures[i]->sampler;
+				info.imageView = texRe->textures[i]->image.view;
+				info.imageLayout = Desc->info.layout;
 				imageInfos.push_back(info);
 
 			}
@@ -264,31 +350,60 @@ void createUniformBuffers(RendererContext& ctx)
 {
 	for (auto* Desc : ctx.Descriptors.Descriptors) {
 		if (Desc->info.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
-			static_cast<UniformResources*>(Desc)->buffer = createUniformBuffer(ctx.vulkanContext, static_cast<UniformResources*>(Desc)->size);
+			static_cast<BufferResource*>(Desc)->buffer = createUniformBuffer(ctx.vulkanContext, static_cast<BufferResource*>(Desc)->size);
+		}
+		else if (Desc->info.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
+			static_cast<BufferResource*>(Desc)->buffer = createStorageBuffer(ctx.vulkanContext, static_cast<BufferResource*>(Desc)->size);
 		}
 	}
 }
-void destroyUniformBuffers(RendererContext& ctx)
+void destroyDescriptorBuffers(RendererContext& ctx)
 {
 	for (auto* Desc : ctx.Descriptors.Descriptors) {
-		if (Desc->info.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
-			destroyBuffer(ctx.vulkanContext, static_cast<UniformResources*>(Desc)->buffer);
+		if (Desc->info.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER || Desc->info.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
+			destroyBuffer(ctx.vulkanContext, static_cast<BufferResource*>(Desc)->buffer);
 		}
 	}
 }
 
-void bindDescriptorSets(RendererContext& ctx, VkCommandBuffer cmd) {
-
+void bindDescriptorSets(RendererContext& ctx, VkCommandBuffer cmd, DescSetsMask mask) {
+	// add sets here
+	if (hasSet(mask, DescSetsMask::GLOBAL)) {
 		vkCmdBindDescriptorSets(
 			cmd,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			ctx.pipeline.pipelineLayout,
 			0,
-			ctx.Descriptors.sets.size(),
-			ctx.Descriptors.sets.data(),
+			1,
+			&ctx.Descriptors.sets.at(0),
 			0,
 			nullptr
 		);
+	}
+	if (hasSet(mask, DescSetsMask::MATERIAL)) {
+		vkCmdBindDescriptorSets(
+			cmd,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			ctx.pipeline.pipelineLayout,
+			1, // first set
+			1, // count
+			&ctx.Descriptors.sets.at(1), // sets
+			0,
+			nullptr
+		);
+	}
+	if (hasSet(mask, DescSetsMask::SHADOW)) {
+		vkCmdBindDescriptorSets(
+			cmd,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			ctx.pipeline.pipelineLayout,
+			2, // first set
+			1, // count
+			&ctx.Descriptors.sets.at(2), // sets
+			0,
+			nullptr
+		);
+	}
 
 }
 
@@ -296,7 +411,11 @@ void bindDescriptorSets(RendererContext& ctx, VkCommandBuffer cmd) {
 
 void updatePerFrameUniformBuffers(RendererContext& RenderCtx, RenderData& Rdata)
 {
-	updateUniformBuffer<TimeUBO>(RenderCtx.vulkanContext, RenderCtx.Descriptors.time.buffer, Rdata.Uniforms.time);
-	updateUniformBuffer<CameraUBO>(RenderCtx.vulkanContext, RenderCtx.Descriptors.camera.buffer, Rdata.Uniforms.camera);
-	updateUniformBuffer<ShadingUBO>(RenderCtx.vulkanContext, RenderCtx.Descriptors.shading.buffer, Rdata.Uniforms.shading);
+	// Update buffers with CPU data from Descriptors stuct
+	updateBuffer<FrameUBO>(RenderCtx.vulkanContext, RenderCtx.Descriptors.frame.buffer, Rdata.Uniforms.frame);
+	updateBuffer<CameraUBO>(RenderCtx.vulkanContext, RenderCtx.Descriptors.camera.buffer, Rdata.Uniforms.camera);
+	// probably not good performance wise
+	updateBuffer<Material>(RenderCtx.vulkanContext, RenderCtx.Descriptors.materials.buffer, Rdata.StorageBuffers.materials);
+	updateBuffer<Light>(RenderCtx.vulkanContext, RenderCtx.Descriptors.lights.buffer, Rdata.StorageBuffers.lights);
+
 }

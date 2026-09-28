@@ -1,0 +1,2 @@
+#define MAX_SHADOW_MAPS 16
+#define MAX_TEXTURES 100

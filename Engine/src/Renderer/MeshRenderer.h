@@ -28,9 +28,6 @@
 #include "MeshRenderer.h"
 #include "Desciptors.h"
 
-// datastructures
-
-#include "../EngineData.h"
 // memory
 #include "Vulkan/MemoryHandler/memory.h"
 #include "Vulkan/MemoryHandler/MemStructs.h"

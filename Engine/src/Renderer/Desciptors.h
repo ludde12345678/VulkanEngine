@@ -12,11 +12,11 @@
 #include "RendererContext.h"
 #include "Vulkan/VUtils.h"
 #include "Pipeline.h"
-#include "../EngineData.h"
+#include "RendererInternal.h"
 
-void setupDescriptorResources(RendererContext& ctx, ResourceContext& resources, Scene& scene);
+void setupDescriptorResources(RendererContext& ctx, ResourceContext& resources, Scene& scene, uint32_t materialCount);
 
-void createDescriptorInfos(RendererContext& ctx);
+void createDescriptorInfos(RendererContext& ctx, uint32_t lightCount, uint32_t materialCount);
 
 void createDescriptorLayouts(RendererContext& ctx);
 
@@ -32,8 +32,8 @@ void destroyDescriptorPool(RendererContext& ctx);
 
 void createUniformBuffers(RendererContext& ctx);
 
-void destroyUniformBuffers(RendererContext& ctx);
+void destroyDescriptorBuffers(RendererContext& ctx);
 
-void bindDescriptorSets(RendererContext& ctx, VkCommandBuffer cmd);
+void bindDescriptorSets(RendererContext& ctx, VkCommandBuffer cmd, DescSetsMask mask);
 
 void updatePerFrameUniformBuffers(RendererContext& RenderCtx, RenderData& Rdata);

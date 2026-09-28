@@ -1,31 +1,15 @@
 #pragma once
-#include <Types/Handles.h>
-#include <glm/glm.hpp>
-enum class ObjectComponents
-{
-    Mesh,
-    Material,
-    PointLight,
-    Camera,
-};
+#include <optional>
+#include <Types/Components.h>
 
-struct Material
-{
-    TextureHandle AlbedoIndex = TextureHandle{};
-    TextureHandle NormalIndex = TextureHandle{};
-    TextureHandle RoughnessIndex = TextureHandle{};
-    glm::vec4 color = glm::vec4(1.0f);
-    float specularIntensity = 10.0f;
-};
-
+// object
 struct Object
 {
     std::string name;
-    MeshHandle mesh;
-    Material material;
+    Components::Transform transform;
 
-    std::vector<ObjectComponents> components;
-    glm::vec3 position = glm::vec3(0.0f);
-    glm::vec3 rotation = glm::vec3(0.0f);
-    glm::vec3 scale = glm::vec3(1.0f);
+    // Optional components
+    std::optional<Components::Mesh> mesh;
+    std::optional<Components::Camera> camera;
+    std::optional<Components::Light> light;
 };

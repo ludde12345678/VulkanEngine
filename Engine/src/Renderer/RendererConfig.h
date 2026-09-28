@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <Renderer/Renderer.h>
 #include <volk.h>
 #include <filesystem>
 
@@ -24,7 +25,8 @@ namespace VConfig {
 	{
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 		VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-		VK_EXT_SHADER_OBJECT_EXTENSION_NAME
+		VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
+		VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME
 	};
 
 	struct DeviceRequirements
@@ -57,29 +59,20 @@ namespace VConfig {
 	// shaders
 	inline std::filesystem::path SHADER_DIR = "../../Assets/Shaders";
 
-	// default Renderstate
-
-	inline VulkanGraphicsState DefaultGraphicsState
-	{
-		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-		.cullMode = VK_CULL_MODE_BACK_BIT,
-		.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
-		.polygonMode = VK_POLYGON_MODE_FILL,
-		.rasterizerDiscard = false,
-		.depthTest = true,
-		.compareOp = VK_COMPARE_OP_LESS,
-		.depthBias = false,
-		.depthWrite = true,
-		.stencilTest = false,
-		.samples = VK_SAMPLE_COUNT_1_BIT,
-		.sampleMask = 0xFFFFFFFF,
-
-
-		.alphaToCoverage = false,
-		.colorBlendEnable = VK_FALSE
-	};
-
 	// Texture Slots
 	constexpr uint32_t MAX_TEXTURES = 100;
+	// shadow map slots
+	constexpr uint32_t MAX_SHADOW_MAPS = 16;
+	// clear color
+	constexpr VkClearColorValue CLEAR_COLOR_VALUE = { {0.1f, 0.1f, 0.1f, 1.0f} };
+
+	inline const RenderSettings DefaultRenderSettings{
+		.shadowMap = true,
+		
+	};
+	inline const DebugRenderSettings DefaultDebugRenderSettings{
+	.dispDebugWindow = false,
+	.wireframe = false
+	};
 	
 }

@@ -29,17 +29,16 @@
 #include "MeshRenderer.h"
 #include "Desciptors.h"
 #include "CmdRecording.h"
-
-// datastructures
-#include "../EngineData.h"
+#include "RenderStages.h"
+#include <Renderer/RenderSettings.h>
 // memory
 #include "Vulkan/MemoryHandler/memory.h"
 #include "Vulkan/MemoryHandler/MemStructs.h"
 
 
+void initShadowMapRenderTargets(RendererContext& RenderCtx, RenderData& data, ResourceContext& resources);
 
-
-void DrawFrame(RendererContext& RenderCtx, ResourceContext& resources, GLFWwindow* window, Scene& scene, RenderData& Rdata);
+void DrawFrame(RendererContext& RenderCtx, ResourceContext& resources, GLFWwindow* window, Scene& scene, RenderData& Rdata, const Settings& settings);
 
 
 void recreateSwapchainResources(VulkanContext& ctx, GLFWwindow* window);

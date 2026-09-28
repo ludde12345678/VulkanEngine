@@ -1,33 +1,30 @@
 #include "VImage.h"
 
 
-void transitionSwapchainImage(VulkanContext& ctx, VkCommandBuffer cmd, uint32_t imageIndex, VkImageLayout newLayout) {
-	VkImageLayout oldLayout = ctx.swapchainContext.imageLayouts[imageIndex];
+
+void transitionImage(VulkanContext& ctx, VkCommandBuffer cmd, RenderTarget& target, VkImageLayout newLayout) {
+	VkImageLayout oldLayout = target.layout;
 	transitionImageLayout(
 		cmd,
-		ctx.swapchainContext.images[imageIndex],
-		ctx.swapchainContext.imageFormat,
+		target.image,
+		target.format,
 		oldLayout,
 		newLayout
 	);
-	ctx.swapchainContext.imageLayouts[imageIndex] = newLayout;
+	target.layout = newLayout;
 
 }
 void transitionSwapchainDepthImage(VulkanContext& ctx, VkCommandBuffer cmd, VkImageLayout oldLayout, VkImageLayout newLayout) {
 	
-	for (auto& depthImage : ctx.swapchainContext.allocatedDepthImages) {
+	for (auto& depthTarget : ctx.swapchainContext.depthTargets) {
 		transitionImageLayout(
 			cmd,
-			depthImage.image,
-			depthImage.format,
+			depthTarget.image,
+			depthTarget.format,
 			oldLayout,
 			newLayout
 		);
 	}
-
-
-	
-
 }
 
 
@@ -109,6 +106,7 @@ void transitionImageLayout(VkCommandBuffer cmd, VkImage image, VkFormat format, 
 		barrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
 		barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
 	}
+
 	else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
 		newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
 	{
@@ -127,6 +125,15 @@ void transitionImageLayout(VkCommandBuffer cmd, VkImage image, VkFormat format, 
 		barrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
 		barrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
+		newLayout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL)
+	{
+		barrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+		barrier.srcAccessMask = VK_ACCESS_2_NONE;
+
+		barrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+	}
 	else if (oldLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL &&
 		newLayout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL)
 	{
@@ -135,6 +142,16 @@ void transitionImageLayout(VkCommandBuffer cmd, VkImage image, VkFormat format, 
 
 		barrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
 		barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL &&
+		newLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
+	{
+		barrier.srcStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		barrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+
+		barrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+			VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+		barrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	}
 	else if (oldLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL &&
 		newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)

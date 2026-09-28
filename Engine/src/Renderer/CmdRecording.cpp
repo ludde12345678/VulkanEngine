@@ -1,45 +1,31 @@
 #include "CmdRecording.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include "VResources.h"
+#include "RenderStates.h"
 
 
-void recordCmdBuffer(RendererContext& renderCtx, ResourceContext& resources, uint32_t imageIndex, Scene* scene) {
 
+void renderScene(VkCommandBuffer cmd, RendererContext& renderCtx, Scene& scene, ResourceContext& resources)
+{
 	VulkanContext& ctx = renderCtx.vulkanContext;
-	VkCommandBuffer cmd = ctx.cmdBuffers[imageIndex];
-	//vkResetCommandBuffer(cmd, 0);
-	beginCommandBuffer(cmd);
-	transitionSwapchainImage(ctx, cmd, imageIndex, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	beginRendering(ctx, cmd, imageIndex);
-	setViewport(ctx, cmd);
-	setScissor(ctx, cmd);
-	bindShaders(renderCtx, cmd);
-	setupDynamicState(ctx, cmd);
-
-	bindDescriptorSets(renderCtx, cmd);
-
-
-
-	for (auto& obj : scene->objects) {
-		if (!obj.mesh.isValid) { continue; }
-		Mesh& mesh = resources.meshes[obj.mesh.meshIndex];
+	for (auto& obj : scene.objects) {
+		if (!obj.mesh.has_value()) { continue; }
+		if (!obj.mesh.value().mesh.isValid) { continue; }
+		Mesh& mesh = resources.meshes[obj.mesh.value().mesh.meshIndex];
 
 		PushConstants pc{};
 
 		glm::mat4 modelMatrix = glm::mat4(1.0f);
-		modelMatrix = glm::translate(modelMatrix, obj.position);
-		modelMatrix = glm::rotate(modelMatrix, obj.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-		modelMatrix = glm::rotate(modelMatrix, obj.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-		modelMatrix = glm::rotate(modelMatrix, obj.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
-		modelMatrix = glm::scale(modelMatrix, obj.scale);
+		modelMatrix = glm::translate(modelMatrix, obj.transform.position);
+		modelMatrix = glm::rotate(modelMatrix, glm::radians(obj.transform.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+		modelMatrix = glm::rotate(modelMatrix, glm::radians(obj.transform.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+		modelMatrix = glm::rotate(modelMatrix, glm::radians(obj.transform.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+		modelMatrix = glm::scale(modelMatrix, obj.transform.scale);
 		pc.modelMatrix = modelMatrix;
-		
-		pc.AlbedoIndex = obj.material.AlbedoIndex.textureIndex;
-		pc.NormalIndex = obj.material.NormalIndex.textureIndex;
-		pc.color = obj.material.color;
-		pc.RoughnessIndex = obj.material.RoughnessIndex.textureIndex;
-		pc.specularIntensity = obj.material.specularIntensity;
-
+		if (obj.mesh.value().material.has_value()) {
+			// create material
+			pc.materialIndex = obj.mesh.value().material.value().materialIndex;
+		}
 		vkCmdPushConstants(cmd, renderCtx.pipeline.pipelineLayout,
 			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 			0,
@@ -47,67 +33,67 @@ void recordCmdBuffer(RendererContext& renderCtx, ResourceContext& resources, uin
 			&pc);
 		drawMesh(cmd, mesh);
 	}
-
-	if (renderCtx.ImGUIEnabled) {
-		// Draw UI last
-		ImGui_ImplVulkan_RenderDrawData(
-			ImGui::GetDrawData(),
-			cmd
-		);
-	}
-	endRendering(cmd);
-	transitionSwapchainImage(ctx, cmd, imageIndex, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-	endCommandBuffer(cmd);
-
 }
 
 
-void beginRendering(VulkanContext& ctx, VkCommandBuffer cmd, uint32_t imageIndex) {
+void beginRendering(VulkanContext& ctx, VkCommandBuffer cmd, std::optional <RenderTarget> color, std::optional <RenderTarget> depth) {
 
 	VkClearValue clearColor{};
-	clearColor.color = { {0.0f, 0.0f, 0.0f, 1.0f} };
-
-	VkRenderingAttachmentInfo colorAttachInfo{};
-	colorAttachInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-	colorAttachInfo.imageView = ctx.swapchainContext.imageViews[imageIndex];
-	colorAttachInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	colorAttachInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	colorAttachInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachInfo.clearValue = clearColor;
+	clearColor.color = VConfig::CLEAR_COLOR_VALUE;
 
 	VkClearValue clearDepth{};
 	clearDepth.depthStencil.depth = 1.0f;
 	clearDepth.depthStencil.stencil = 0;
 
+	VkRenderingAttachmentInfo colorAttachInfo{};
 	VkRenderingAttachmentInfo depthAttachInfo{};
-	depthAttachInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-	depthAttachInfo.imageView = ctx.swapchainContext.allocatedDepthImages[imageIndex].view;
-	depthAttachInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	depthAttachInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depthAttachInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	depthAttachInfo.clearValue = clearDepth;
 
+	if (color) {
+		colorAttachInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		colorAttachInfo.imageView = color->imageView,
+		colorAttachInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		colorAttachInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		colorAttachInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colorAttachInfo.clearValue = clearColor;
+	}
+
+
+	if (depth) {
+		depthAttachInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		depthAttachInfo.imageView = depth->imageView,
+		depthAttachInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+		depthAttachInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		depthAttachInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		depthAttachInfo.clearValue = clearDepth;
+	}
 
 
 	VkRenderingInfo renderInfo{};
 	renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-	renderInfo.renderArea = {
-		{0, 0},
-		ctx.swapchainContext.extent
-	};
+	if (color)
+		renderInfo.renderArea.extent = color->extent;
+	else if (depth)
+		renderInfo.renderArea.extent = depth->extent;
 	renderInfo.layerCount = 1;
 
-	renderInfo.colorAttachmentCount = 1;
-	renderInfo.pColorAttachments = &colorAttachInfo;
-	renderInfo.pDepthAttachment = &depthAttachInfo;
+	if (color)
+	{
+		renderInfo.colorAttachmentCount = 1;
+		renderInfo.pColorAttachments = &colorAttachInfo;
+	}
+
+	if (depth)
+	{
+		renderInfo.pDepthAttachment = &depthAttachInfo;
+	}
 
 	vkCmdBeginRendering(cmd, &renderInfo);
 
 }
-void setViewport(VulkanContext& ctx, VkCommandBuffer cmd) {
+void setViewport(VulkanContext& ctx, VkCommandBuffer cmd, RenderTarget target) {
 	VkViewport viewportInfo{};
-	viewportInfo.width = ctx.swapchainContext.extent.width;
-	viewportInfo.height = ctx.swapchainContext.extent.height;
+	viewportInfo.width = target.extent.width;
+	viewportInfo.height = target.extent.height;
 	viewportInfo.minDepth = 0;
 	viewportInfo.maxDepth = 1;
 	viewportInfo.x = 0;
@@ -115,9 +101,9 @@ void setViewport(VulkanContext& ctx, VkCommandBuffer cmd) {
 
 	vkCmdSetViewportWithCountEXT(cmd, 1, &viewportInfo);
 }
-void setScissor(VulkanContext& ctx, VkCommandBuffer cmd) {
+void setScissor(VulkanContext& ctx, VkCommandBuffer cmd, RenderTarget target) {
 	VkRect2D scissor{};
-	scissor.extent = ctx.swapchainContext.extent;
+	scissor.extent = target.extent;
 	scissor.offset = { 0,0 };
 	vkCmdSetScissorWithCountEXT(cmd, 1, &scissor);
 }

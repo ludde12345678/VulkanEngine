@@ -15,7 +15,7 @@ void createCommandPool(VulkanContext& ctx) {
 
 }
 void createCommandBuffers(VulkanContext& ctx) {
-	const uint32_t commandBufferCount = static_cast<uint32_t>(ctx.swapchainContext.images.size());
+	const uint32_t commandBufferCount = static_cast<uint32_t>(ctx.swapchainContext.colorTargets.size());
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.commandPool = ctx.cmdPool;

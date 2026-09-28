@@ -21,7 +21,7 @@ struct Mesh
 struct Texture
 {
     AllocatedImage image;
-    VkSampler sampler;
+    VkSampler sampler = VK_NULL_HANDLE;
 };
 
 

@@ -6,7 +6,7 @@
 #include "VContext.h"
 #include "VUtils.h"
 
-void transitionSwapchainImage(VulkanContext& ctx, VkCommandBuffer cmd, uint32_t imageIndex, VkImageLayout newLayout);
+void transitionImage(VulkanContext& ctx, VkCommandBuffer cmd, RenderTarget& target, VkImageLayout newLayout);
 
 void transitionSwapchainDepthImage(VulkanContext& ctx, VkCommandBuffer cmd, VkImageLayout oldLayout, VkImageLayout newLayout);
 

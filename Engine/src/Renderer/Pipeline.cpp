@@ -1,108 +1,60 @@
 #include "Pipeline.h"
 
 
-void setupDynamicState(VulkanContext& ctx, VkCommandBuffer cmd)
+void setupDynamicState(VulkanContext& ctx, VkCommandBuffer cmd, VulkanGraphicsState state)
 {
-	vkCmdSetPrimitiveTopologyEXT(
+	// assembly
+	vkCmdSetPrimitiveTopologyEXT(cmd,state.topology);
+	vkCmdSetLineWidth(cmd, state.lineWidth);
+	vkCmdSetPrimitiveRestartEnableEXT(cmd,state.primitiveRestart);
+
+	// rasterization
+	vkCmdSetCullModeEXT(cmd,state.cullMode);
+	vkCmdSetFrontFaceEXT(cmd,state.frontFace);
+	vkCmdSetPolygonModeEXT(cmd,state.polygonMode);
+	vkCmdSetRasterizerDiscardEnableEXT(cmd,state.rasterizerDiscard);
+
+	// Depth
+	vkCmdSetDepthTestEnableEXT(cmd,state.depth.testEnable);
+	vkCmdSetDepthWriteEnableEXT(cmd, state.depth.writeEnable);
+	vkCmdSetDepthCompareOpEXT(cmd,state.depth.compareOp);
+
+
+	// depth bias
+	vkCmdSetDepthBiasEnableEXT(cmd,state.depth.biasEnable);
+
+	vkCmdSetDepthBias(
 		cmd,
-		ctx.currentGraphicsState.topology
+		state.depth.biasInfo.depthBiasConstantFactor,
+		state.depth.biasInfo.depthBiasClamp,
+		state.depth.biasInfo.depthBiasSlopeFactor
 	);
 
-	vkCmdSetCullModeEXT(
-		cmd,
-		ctx.currentGraphicsState.cullMode
-	);
-	vkCmdSetFrontFaceEXT(
-		cmd,
-		ctx.currentGraphicsState.frontFace
-	);
-	vkCmdSetPolygonModeEXT(
-		cmd,
-		ctx.currentGraphicsState.polygonMode
-	);
-	vkCmdSetRasterizerDiscardEnableEXT(
-		cmd,
-		ctx.currentGraphicsState.rasterizerDiscard
-	);
-	vkCmdSetDepthTestEnableEXT(
-		cmd,
-		ctx.currentGraphicsState.depthTest
-	);
-	vkCmdSetDepthCompareOpEXT(
-		cmd,
-		ctx.currentGraphicsState.compareOp);
-	vkCmdSetDepthBiasEnableEXT(
-		cmd,
-		ctx.currentGraphicsState.depthBias
-	);
-	vkCmdSetDepthWriteEnableEXT(
-		cmd,
-		ctx.currentGraphicsState.depthWrite
-	);
-	vkCmdSetStencilTestEnableEXT(
-		cmd,
-		ctx.currentGraphicsState.stencilTest
-	);
-	vkCmdSetPrimitiveRestartEnableEXT(
-		cmd,
-		VK_FALSE
-	);
-	vkCmdSetRasterizationSamplesEXT(
-		cmd,
-		ctx.currentGraphicsState.samples
-	);
-	vkCmdSetSampleMaskEXT(
-		cmd,
-		ctx.currentGraphicsState.samples,
-		&ctx.currentGraphicsState.sampleMask
-	);
-	vkCmdSetAlphaToCoverageEnableEXT(
-		cmd,
-		ctx.currentGraphicsState.alphaToCoverage
-	);
-	vkCmdSetColorBlendEnableEXT(
-		cmd,
-		0,          // first attachment
-		1,          // number of attachments
-		&ctx.currentGraphicsState.colorBlendEnable
-	);
+	// Stencil
+	vkCmdSetStencilTestEnable(cmd,state.stencil.testEnable);
+	// front face
+	vkCmdSetStencilOpEXT(cmd, VK_STENCIL_FACE_FRONT_BIT, state.stencil.front.failOp, state.stencil.front.passOp, state.stencil.front.depthFailOp, state.stencil.front.compareOp);
+	vkCmdSetStencilCompareMask(cmd, VK_STENCIL_FACE_FRONT_BIT, state.stencil.front.compareMask);
+	vkCmdSetStencilWriteMask(cmd, VK_STENCIL_FACE_FRONT_BIT, state.stencil.front.writeMask);
+	vkCmdSetStencilReference(cmd, VK_STENCIL_FACE_FRONT_BIT, state.stencil.front.reference);
+	//back face
+	vkCmdSetStencilOpEXT(cmd, VK_STENCIL_FACE_BACK_BIT, state.stencil.back.failOp, state.stencil.back.passOp, state.stencil.back.depthFailOp, state.stencil.back.compareOp);
+	vkCmdSetStencilCompareMask(cmd, VK_STENCIL_FACE_BACK_BIT, state.stencil.back.compareMask);
+	vkCmdSetStencilWriteMask(cmd, VK_STENCIL_FACE_BACK_BIT, state.stencil.back.writeMask);
+	vkCmdSetStencilReference(cmd, VK_STENCIL_FACE_BACK_BIT, state.stencil.back.reference);
 
-	VkColorBlendEquationEXT blendEquation{};
 
-	blendEquation.srcColorBlendFactor =
-		VK_BLEND_FACTOR_ONE;
-	blendEquation.dstColorBlendFactor =
-		VK_BLEND_FACTOR_ZERO;
-	blendEquation.colorBlendOp =
-		VK_BLEND_OP_ADD;
+	// MSAA
+	vkCmdSetRasterizationSamplesEXT(cmd,state.samples);
+	vkCmdSetSampleMaskEXT(cmd,state.samples,&state.sampleMask);
+	vkCmdSetAlphaToCoverageEnableEXT(cmd,state.alphaToCoverage);
 
-	blendEquation.srcAlphaBlendFactor =
-		VK_BLEND_FACTOR_ONE;
-	blendEquation.dstAlphaBlendFactor =
-		VK_BLEND_FACTOR_ZERO;
-	blendEquation.alphaBlendOp =
-		VK_BLEND_OP_ADD;
-
-	vkCmdSetColorBlendEquationEXT(
-		cmd,
-		0,
-		1,
-		&blendEquation
-	);
-
-	VkColorComponentFlags mask =
-		VK_COLOR_COMPONENT_R_BIT |
-		VK_COLOR_COMPONENT_G_BIT |
-		VK_COLOR_COMPONENT_B_BIT |
-		VK_COLOR_COMPONENT_A_BIT;
-
-	vkCmdSetColorWriteMaskEXT(
-		cmd,
-		0,
-		1,
-		&mask
-	);
-
+	// Color blend
+	if (!state.colorBlendEnables.empty()) {
+		vkCmdSetColorBlendEnableEXT(cmd, 0, state.colorBlendEnables.size(), state.colorBlendEnables.data());
+		vkCmdSetColorBlendEquationEXT(cmd, 0, state.blendEquations.size(), state.blendEquations.data());
+		vkCmdSetColorWriteMaskEXT(cmd, 0, state.colorWriteMasks.size(), state.colorWriteMasks.data());
+	}
 }
 
 void createPipelineLayout(RendererContext& ctx) {

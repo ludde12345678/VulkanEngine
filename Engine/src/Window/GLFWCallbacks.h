@@ -4,7 +4,6 @@
 #include <glm/glm.hpp>
 #include "GLFWConfig.h"
 #include <iostream>
-#include "../EngineData.h"
 
 void error_callback(int error, const char* description);
 

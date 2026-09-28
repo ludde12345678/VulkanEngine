@@ -1,24 +1,106 @@
 #include "ResourceUploader.h"
 
 
-Texture createDefaultTexture(RendererContext& ctx) {
-	TextureData data{};
-	data.height = 100;
-	data.width = 100;
-	data.name = "Default pink albedo texture";
-	data.pixels.resize(data.width * data.height * 4);
+void createDefaultTexture(RendererContext& ctx, std::vector<Texture>& textures) {
+    // Albedo: white
+    TextureData albedoData{};
+    albedoData.height = 100;
+    albedoData.width = 100;
+    albedoData.name = "Default white albedo texture";
+    albedoData.pixels.resize(albedoData.width * albedoData.height * 4);
 
-	for (size_t i = 0; i < data.pixels.size(); i += 4)
-	{
-		data.pixels[i + 0] = 255; // R
-		data.pixels[i + 1] = 0;   // G
-		data.pixels[i + 2] = 255; // B
-		data.pixels[i + 3] = 255; // A
-	}
+    for (size_t i = 0; i < albedoData.pixels.size(); i += 4)
+    {
+        albedoData.pixels[i + 0] = 255;
+        albedoData.pixels[i + 1] = 255;
+        albedoData.pixels[i + 2] = 255;
+        albedoData.pixels[i + 3] = 255;
+    }
 
-	Texture defText;
-	populateTexture(ctx, &defText, data);
-	return defText;
+    Texture albedo;
+    populateTexture(ctx, &albedo, albedoData);
+    textures.push_back(albedo);
+
+
+    // Normal: flat normal (0, 0, 1)
+    TextureData normalData{};
+    normalData.height = 100;
+    normalData.width = 100;
+    normalData.name = "Default flat normal texture";
+    normalData.pixels.resize(normalData.width * normalData.height * 4);
+
+    for (size_t i = 0; i < normalData.pixels.size(); i += 4)
+    {
+        normalData.pixels[i + 0] = 128;
+        normalData.pixels[i + 1] = 128;
+        normalData.pixels[i + 2] = 255;
+        normalData.pixels[i + 3] = 255;
+    }
+
+    Texture normal;
+    populateTexture(ctx, &normal, normalData);
+    textures.push_back(normal);
+
+
+    // Roughness: fully rough
+    TextureData roughnessData{};
+    roughnessData.height = 100;
+    roughnessData.width = 100;
+    roughnessData.name = "Default roughness texture";
+    roughnessData.pixels.resize(roughnessData.width * roughnessData.height * 4);
+
+    for (size_t i = 0; i < roughnessData.pixels.size(); i += 4)
+    {
+        roughnessData.pixels[i + 0] = 255;
+        roughnessData.pixels[i + 1] = 255;
+        roughnessData.pixels[i + 2] = 255;
+        roughnessData.pixels[i + 3] = 255;
+    }
+
+    Texture roughness;
+    populateTexture(ctx, &roughness, roughnessData);
+    textures.push_back(roughness);
+
+
+    // Metallic: non-metal
+    TextureData metallicData{};
+    metallicData.height = 100;
+    metallicData.width = 100;
+    metallicData.name = "Default non-metallic texture";
+    metallicData.pixels.resize(metallicData.width * metallicData.height * 4);
+
+    for (size_t i = 0; i < metallicData.pixels.size(); i += 4)
+    {
+        metallicData.pixels[i + 0] = 0;
+        metallicData.pixels[i + 1] = 0;
+        metallicData.pixels[i + 2] = 0;
+        metallicData.pixels[i + 3] = 255;
+    }
+
+    Texture metallic;
+    populateTexture(ctx, &metallic, metallicData);
+    textures.push_back(metallic);
+
+
+    // AO: no occlusion
+    TextureData aoData{};
+    aoData.height = 100;
+    aoData.width = 100;
+    aoData.name = "Default ambient occlusion texture";
+    aoData.pixels.resize(aoData.width * aoData.height * 4);
+
+    for (size_t i = 0; i < aoData.pixels.size(); i += 4)
+    {
+        aoData.pixels[i + 0] = 255;
+        aoData.pixels[i + 1] = 255;
+        aoData.pixels[i + 2] = 255;
+        aoData.pixels[i + 3] = 255;
+    }
+
+    Texture ao;
+    populateTexture(ctx, &ao, aoData);
+    textures.push_back(ao);
+
 }
 
 void populateMesh(RendererContext& ctx, Mesh* mesh, std::vector<Vertex> vert, std::vector<uint32_t> indices) {

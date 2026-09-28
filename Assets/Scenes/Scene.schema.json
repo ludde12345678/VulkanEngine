@@ -1,0 +1,335 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Engine Scene",
+  "type": "object",
+  "additionalProperties": false,
+
+  "required": [
+    "Name",
+    "Objects",
+    "Assets"
+  ],
+
+  "properties": {
+    "Name": {
+      "type": "string",
+      "description": "Name of the scene."
+    },
+
+    "Objects": {
+      "type": "array",
+      "description": "Objects contained in the scene.",
+      "items": {
+        "$ref": "#/$defs/object"
+      }
+    },
+
+    "Assets": {
+      "$ref": "#/$defs/assets"
+    }
+  },
+
+  "$defs": {
+
+    "object": {
+      "title": "Scene Object",
+      "type": "object",
+      "additionalProperties": false,
+
+      "required": [
+        "Name",
+        "Transform"
+      ],
+
+      "properties": {
+        "Name": {
+          "type": "string",
+          "description": "Name of the object."
+        },
+
+        "Transform": {
+          "$ref": "#/$defs/transform"
+        },
+
+        "Camera": {
+          "$ref": "#/$defs/camera"
+        },
+
+        "Light": {
+          "$ref": "#/$defs/light"
+        },
+
+        "Mesh": {
+          "$ref": "#/$defs/meshComponent"
+        }
+      }
+    },
+
+    "transform": {
+      "title": "Transform",
+      "type": "object",
+      "additionalProperties": false,
+
+      "properties": {
+        "Position": {
+          "$ref": "#/$defs/vec3"
+        },
+
+        "Rotation": {
+          "$ref": "#/$defs/vec3"
+        },
+
+        "Scale": {
+          "$ref": "#/$defs/vec3"
+        }
+      }
+    },
+
+    "camera": {
+      "title": "Camera",
+      "type": "object",
+      "additionalProperties": false,
+
+      "properties": {
+        "Projection": {
+          "type": "string",
+          "description": "Type of projection(Perspective/Orthographic)."
+        },
+        "FOV": {
+          "type": "number",
+          "description": "Camera field of view in degrees."
+        },
+
+        "AspectRatio": {
+          "type": "number"
+        },
+
+        "NearPlane": {
+          "type": "number"
+        },
+
+        "FarPlane": {
+          "type": "number"
+        }
+      }
+    },
+
+    "light": {
+      "title": "Light",
+      "type": "object",
+      "additionalProperties": false,
+
+      "properties": {
+        "Type": {
+          "type": "string",
+          "description": "Type of light(Point,Directional,Spot)"
+        },
+        "Color": {
+          "$ref": "#/$defs/vec3"
+        },
+
+        "Intensity": {
+          "type": "number"
+        },
+        "Range": {
+          "type": "number"
+        },
+        "SpotInnerAngle": {
+          "type": "number"
+        },
+        "SpotOuterAngle": {
+          "type": "number"
+        },
+        "ShadowCaster": {
+          "type": "boolean",
+          "description": "Is this light a shadow caster?"
+        },
+        "ShadowDistance": {
+          "type": "number",
+          "description": "Shadow Distance to orgin"
+        }
+      }
+    },
+
+    "meshComponent": {
+      "title": "Mesh",
+      "type": "object",
+      "additionalProperties": false,
+
+      "required": [
+        "Mesh"
+      ],
+
+      "properties": {
+        "Mesh": {
+          "type": "string",
+          "description": "Name of the mesh asset."
+        },
+
+        "Material": {
+          "type": "string",
+          "description": "Name of the material asset."
+        }
+      }
+    },
+
+    "assets": {
+      "title": "Assets",
+      "type": "object",
+      "additionalProperties": false,
+
+      "required": [
+        "Materials",
+        "Meshes",
+        "Textures"
+      ],
+
+      "properties": {
+        "Materials": {
+          "type": "array",
+          "description": "Material assets used by the scene.",
+          "items": {
+            "$ref": "#/$defs/material"
+          }
+        },
+
+        "Meshes": {
+          "type": "array",
+          "description": "Mesh assets used by the scene.",
+          "items": {
+            "$ref": "#/$defs/meshAsset"
+          }
+        },
+
+        "Textures": {
+          "type": "array",
+          "description": "Texture assets used by the scene.",
+          "items": {
+            "$ref": "#/$defs/textureAsset"
+          }
+        }
+      }
+    },
+
+    "material": {
+      "title": "Material Asset",
+      "type": "object",
+      "additionalProperties": false,
+
+      "required": [
+        "Name"
+      ],
+
+      "properties": {
+        "Name": {
+          "type": "string"
+        },
+
+        "AlbedoTexture": {
+          "type": "string",
+          "description": "Name of the albedo texture."
+        },
+
+        "NormalTexture": {
+          "type": "string",
+          "description": "Name of the normal texture."
+        },
+
+        "RoughnessTexture": {
+          "type": "string",
+          "description": "Name of the roughness texture."
+        },
+        "MetallicTexture": {
+          "type": "string",
+          "description": "Name of the metallic texture."
+        },
+        "AOTexture": {
+          "type": "string",
+          "description": "Name of the AO texture."
+        },
+
+        "Color": {
+          "$ref": "#/$defs/vec4"
+        },
+        "SpecularColor": {
+          "$ref": "#/$defs/vec4"
+        },
+
+        "SpecularPower": {
+          "type": "number"
+        },
+        "Metallic": {
+          "type": "number"
+        },
+        "Roughness": {
+          "type": "number"
+        },
+        "AO": {
+          "type": "number"
+        }
+      }
+    },
+
+    "meshAsset": {
+      "title": "Mesh Asset",
+      "type": "object",
+      "additionalProperties": false,
+
+      "required": [
+        "Name",
+        "Path"
+      ],
+
+      "properties": {
+        "Name": {
+          "type": "string"
+        },
+
+        "Path": {
+          "type": "string"
+        }
+      }
+    },
+
+    "textureAsset": {
+      "title": "Texture Asset",
+      "type": "object",
+      "additionalProperties": false,
+
+      "required": [
+        "Name",
+        "Path"
+      ],
+
+      "properties": {
+        "Name": {
+          "type": "string"
+        },
+
+        "Path": {
+          "type": "string"
+        }
+      }
+    },
+
+    "vec3": {
+      "title": "Vector 3",
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+
+    "vec4": {
+      "title": "Vector 4",
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    }
+  }
+}

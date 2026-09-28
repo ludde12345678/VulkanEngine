@@ -3,56 +3,10 @@
 #include "VResources.h"
 #include "Vulkan/VContext.h"
 #include "ShaderData.h"
-
-// descriptors
-
-struct DescriptorInfo {
-	const char* name;
-	uint32_t binding;
-	uint32_t set;
-	uint32_t count;
-
-	VkDescriptorType type;
-	VkShaderStageFlags stages;
-};
-struct DescriptorResource
-{
-	DescriptorInfo info;
-};
-
-struct TextureResources : DescriptorResource
-{
-
-	std::vector<Texture*> textures;
-
-};
-
-struct UniformResources : DescriptorResource
-{
-	uint32_t size;
-	AllocatedBuffer buffer;
-
-};
-
-// add uniforms here:
-struct DescriptorContext
-{
-	UniformResources time;
-	UniformResources camera;
-	UniformResources shading;
-	// local
-	UniformResources material;
-	TextureResources textures;
+#include <utility>
 
 
 
-
-	std::vector<DescriptorResource*> Descriptors;
-	std::vector<VkDescriptorSetLayout> layouts;
-	std::vector <VkDescriptorSet> sets;
-	std::vector <VkPushConstantRange> pushConstants;
-
-};
 
 
 struct PipelineContext
@@ -62,8 +16,9 @@ struct PipelineContext
 
 struct ShaderContext
 {
-	VkShaderEXT vertexShader = VK_NULL_HANDLE;
-	VkShaderEXT fragmentShader = VK_NULL_HANDLE;
+	std::unordered_map<std::string, VkShaderEXT> vertexShaders;
+	std::unordered_map<std::string, VkShaderEXT> fragmentShaders;
+	std::unordered_map<std::string, VkShaderEXT> computeShaders;
 };
 
 struct ResourceContext
@@ -71,10 +26,15 @@ struct ResourceContext
 	Texture defaultTexture;
 	std::vector<Mesh> meshes;
 	std::vector<Texture> textures;
+	std::vector<Texture> ShadowMapTextures;
 
 };
+struct RenderTargets
+{
+	std::vector <RenderTarget> shadowMaps;
 
-
+	std::vector<AllocatedImage> images;
+};
 struct RendererContext
 {
 	VulkanContext vulkanContext;
@@ -82,6 +42,7 @@ struct RendererContext
 	DescriptorContext Descriptors;
 	PipelineContext pipeline;
 	ShaderContext shaders;
+	RenderTargets targets;
 
 	VkDescriptorPool DescPool = VK_NULL_HANDLE;
 	VkDescriptorPool ImGuiDescPool = VK_NULL_HANDLE;

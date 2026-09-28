@@ -14,3 +14,9 @@ struct TextureHandle
     uint32_t textureIndex = 0;
     bool isValid = false;
 };
+struct MaterialHandle
+{
+    std::string name = "";
+    uint32_t materialIndex = 0;
+    bool isValid = false;
+};

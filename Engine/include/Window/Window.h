@@ -9,6 +9,7 @@ class Window {
 public:
 	Window(int width, int height, const char* title);
 	~Window();
+	void close();
 	bool shouldClose();
 	void setupGLFWCallbacks(Input& input);
 	void disableCursor(bool disabled);

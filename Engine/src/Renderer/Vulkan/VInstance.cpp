@@ -71,7 +71,6 @@ void createInstance(VulkanContext& ctx)
 		std::cout << "\n" << "ERROR: Vulkan Init";
 		throw std::runtime_error("Vulkan instance creation failed");
 	}
-	std::cout << "\n" << "VulkanSuccess";
 	// print debug info
 	
 	if (VConfig::PRINT_DEBUG_INFO) {

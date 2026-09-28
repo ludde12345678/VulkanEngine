@@ -103,7 +103,9 @@ namespace MemoryInternal {
 AllocatedBuffer createUniformBuffer(VulkanContext& ctx, VkDeviceSize size) {
 	return MemoryInternal::createBuffer(ctx, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
-
+AllocatedBuffer createStorageBuffer(VulkanContext& ctx, VkDeviceSize size) {
+	return MemoryInternal::createBuffer(ctx, size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+}
 AllocatedImage createTextureImage(VulkanContext& ctx, VkImage image, std::vector<uint8_t>& pixelData, VkExtent2D extent) {
 	VkDeviceSize imageSize = extent.width * extent.height * 4;
 

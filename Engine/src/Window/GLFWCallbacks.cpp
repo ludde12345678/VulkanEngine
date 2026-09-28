@@ -1,7 +1,6 @@
 #include "GLFWCallbacks.h"
-#include "../EngineData.h"
-#include <Renderer.h>
-#include <Input.h>
+#include <Renderer/Renderer.h>
+#include <Input/Input.h>
 
 void error_callback(int error, const char* description)
 {
@@ -20,9 +19,56 @@ void GLFW_KeyCallback(GLFWwindow* window, int key, int scancode, int action, int
 
     Input* data = static_cast<Input*>(glfwGetWindowUserPointer(window));
 
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    if (key == GLFW_KEY_ESCAPE) {
+        if (action == GLFW_PRESS)
+            data->setKeyPressed(Key::ESC);
+        else if (action == GLFW_RELEASE)
+            data->setKeyReleased(Key::ESC);
     }
+
+    if (key == GLFW_KEY_F1) {
+        if (action == GLFW_PRESS)
+            data->setKeyPressed(Key::F1);
+        else if (action == GLFW_RELEASE)
+            data->setKeyReleased(Key::F1);
+    }
+
+    if (key == GLFW_KEY_F2) {
+        if (action == GLFW_PRESS)
+            data->setKeyPressed(Key::F2);
+        else if (action == GLFW_RELEASE)
+            data->setKeyReleased(Key::F2);
+    }
+
+    if (key == GLFW_KEY_F3) {
+        if (action == GLFW_PRESS)
+            data->setKeyPressed(Key::F3);
+        else if (action == GLFW_RELEASE)
+            data->setKeyReleased(Key::F3);
+    }
+
+    if (key == GLFW_KEY_F4) {
+        if (action == GLFW_PRESS)
+            data->setKeyPressed(Key::F4);
+        else if (action == GLFW_RELEASE)
+            data->setKeyReleased(Key::F4);
+    }
+
+    if (key == GLFW_KEY_F5) {
+        if (action == GLFW_PRESS)
+            data->setKeyPressed(Key::F5);
+        else if (action == GLFW_RELEASE)
+            data->setKeyReleased(Key::F5);
+    }
+
+    if (key == GLFW_KEY_F6) {
+        if (action == GLFW_PRESS)
+            data->setKeyPressed(Key::F6);
+        else if (action == GLFW_RELEASE)
+            data->setKeyReleased(Key::F6);
+    }
+
+
     
     if (key == GLFW_KEY_W && action == GLFW_PRESS) {
         data->setKeyPressed(Key::W);

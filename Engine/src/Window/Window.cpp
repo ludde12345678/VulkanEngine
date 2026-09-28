@@ -1,8 +1,8 @@
-#include <Renderer.h>
+#include <Renderer/Renderer.h>
 
 #include <glm/glm.hpp>
 #include <iostream>
-#include <Window.h>
+#include <Window/Window.h>
 #include "WindowInternal.h"
 
 #include <volk.h>
@@ -17,12 +17,17 @@
 
 #include "GLFWCallbacks.h"
 #include "../Renderer/RendererInternal.h"
-#include <Window.h>
+#include <Window/Window.h>
 
 struct Window::Impl {
     GLFWwindow* window;
     ImGuiIO* ImguiIO;
 };
+
+void Window::close()
+{
+    glfwSetWindowShouldClose(context->window, GLFW_TRUE);
+}
 
 bool Window::shouldClose()
 {

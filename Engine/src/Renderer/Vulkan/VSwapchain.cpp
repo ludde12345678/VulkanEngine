@@ -58,9 +58,16 @@ void createSwapChain(VulkanContext& ctx, GLFWwindow* window) {
     std::vector<VkImage>images(imageCount);
     vkGetSwapchainImagesKHR(ctx.device, swapchain, &imageCount, images.data());
 
-    // create Image Views
-    std::vector<VkImageView> imageViews;
-    imageViews.reserve(imageCount);
+    // create Image Views/render targets
+    std::vector<RenderTarget> colorTargets;
+    colorTargets.reserve(imageCount);
+    // depth
+    VkFormat depthFormat = selectDepthFormat(ctx);
+    std::vector<AllocatedImage>depthImages;
+    std::vector<RenderTarget> depthTargets;
+    depthImages.reserve(imageCount);
+    depthTargets.reserve(imageCount);
+
     for (VkImage image : images) {
         VkImageViewCreateInfo ViewCreateInfo{};
         ViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -83,42 +90,25 @@ void createSwapChain(VulkanContext& ctx, GLFWwindow* window) {
         {
             throw std::runtime_error("Failed to create image view");
         }
-        imageViews.push_back(view);
-    }
+        colorTargets.push_back(RenderTarget{
+            .image = image,
+            .imageView = view,
+            .format = surfaceFormat.format,
+            .extent = swapCreateInfo.imageExtent,
+            .layout = VK_IMAGE_LAYOUT_UNDEFINED
+            }
+        
+        );
 
-
-     // store in context
-    SwapchainContext context{};
-    context.swapchain = swapchain;
-    context.status = SwapchainStatus::Ok;
-    context.imageCount = imageCount;
-    context.images = images;
-    context.imageViews = imageViews;
-    context.imageFormat = swapCreateInfo.imageFormat;
-    context.extent = swapChainSupport.capabilities.currentExtent;
-    context.presentMode = swapCreateInfo.presentMode;
-    context.imageLayouts.assign(
-        imageCount,
-        VK_IMAGE_LAYOUT_UNDEFINED
-    );
-    
-    ctx.swapchainContext = context;
-
-
-    // depth images:
-    VkFormat depthFormat = selectDepthFormat(ctx);
-    std::vector<AllocatedImage>depthImages;
-    depthImages.reserve(imageCount);
-    for (size_t i = 0; i < imageCount; i++)
-    {
+        // depth images:
         VkImageCreateInfo depthImageCreate{};
         depthImageCreate.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         depthImageCreate.imageType = VK_IMAGE_TYPE_2D;
         depthImageCreate.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
         depthImageCreate.extent = {
-            ctx.swapchainContext.extent.width,
-            ctx.swapchainContext.extent.height,
+            swapCreateInfo.imageExtent.width,
+            swapCreateInfo.imageExtent.height,
             1
         };
         depthImageCreate.mipLevels = 1;
@@ -140,20 +130,20 @@ void createSwapChain(VulkanContext& ctx, GLFWwindow* window) {
         // allocate
         AllocatedImage allocImage = allocateImage(ctx, depthImage);
 
-        VkImageViewCreateInfo ViewCreateInfo{};
-        ViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        ViewCreateInfo.image = depthImage;
-        ViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        ViewCreateInfo.format = depthFormat;
+        VkImageViewCreateInfo ViewCreateDepthInfo{};
+        ViewCreateDepthInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        ViewCreateDepthInfo.image = depthImage;
+        ViewCreateDepthInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        ViewCreateDepthInfo.format = depthFormat;
 
-        ViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-        ViewCreateInfo.subresourceRange.baseMipLevel = 0;
-        ViewCreateInfo.subresourceRange.levelCount = 1;
-        ViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-        ViewCreateInfo.subresourceRange.layerCount = 1;
+        ViewCreateDepthInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        ViewCreateDepthInfo.subresourceRange.baseMipLevel = 0;
+        ViewCreateDepthInfo.subresourceRange.levelCount = 1;
+        ViewCreateDepthInfo.subresourceRange.baseArrayLayer = 0;
+        ViewCreateDepthInfo.subresourceRange.layerCount = 1;
 
         VkImageView depthview;
-        if (vkCreateImageView(ctx.device, &ViewCreateInfo, nullptr, &depthview) != VK_SUCCESS)
+        if (vkCreateImageView(ctx.device, &ViewCreateDepthInfo, nullptr, &depthview) != VK_SUCCESS)
         {
             throw std::runtime_error("Failed to create image view");
         }
@@ -162,15 +152,35 @@ void createSwapChain(VulkanContext& ctx, GLFWwindow* window) {
         allocImage.view = depthview;
         allocImage.format = depthFormat;
         allocImage.extent = {
-            ctx.swapchainContext.extent.width,
-            ctx.swapchainContext.extent.height,
+            swapCreateInfo.imageExtent.width,
+            swapCreateInfo.imageExtent.height,
         };
         depthImages.push_back(allocImage);
+        RenderTarget depthTarget{
+        .image = depthImage,
+        .imageView = depthview,
+        .format = depthFormat,
+        .extent = swapCreateInfo.imageExtent,
+        .layout = VK_IMAGE_LAYOUT_UNDEFINED
+        };
+        
+        depthTargets.push_back(depthTarget);
 
     }
-    ctx.swapchainContext.depthFormat = depthFormat;
-    ctx.swapchainContext.allocatedDepthImages = depthImages;
 
+     // store in context
+    SwapchainContext context{};
+    context.swapchain = swapchain;
+    context.status = SwapchainStatus::Ok;
+    context.imageCount = imageCount;
+
+    context.presentMode = swapCreateInfo.presentMode;
+
+    
+    context.allocatedDepthImages = depthImages;
+    context.colorTargets = colorTargets;
+    context.depthTargets = depthTargets;
+    ctx.swapchainContext = context;
 
     if (VConfig::PRINT_DEBUG_INFO) {
         logSwapChainSupportDetails(swapChainSupport, context);
@@ -189,12 +199,12 @@ void destroySwapchain(VulkanContext &ctx) {
     for (auto Allocimage : ctx.swapchainContext.allocatedDepthImages) {
         destroyImage(ctx, Allocimage);
     }
+    ctx.swapchainContext.depthTargets.clear();
 
-
-    for (auto imageView : ctx.swapchainContext.imageViews) {
-        vkDestroyImageView(ctx.device, imageView, nullptr);
+    for (auto target : ctx.swapchainContext.colorTargets) {
+        vkDestroyImageView(ctx.device, target.imageView, nullptr);
     }
-        
+    ctx.swapchainContext.colorTargets.clear();
     vkDestroySwapchainKHR(ctx.device, ctx.swapchainContext.swapchain, nullptr);
 }
 
@@ -316,10 +326,10 @@ void logSwapChainSupportDetails(const SwapChainSupportDetails& details, const Sw
         std::cout << presentModeToString(present) << "\n";
     }
     std::cout << "\nSelected Format:\n";
-    std::cout << formatToString(context.imageFormat) << "\n";
+    std::cout << formatToString(context.colorTargets[0].format) << "\n";
 
     std::cout << "\nSelected Depth Format:\n";
-    std::cout << formatToString(context.depthFormat) << "\n";
+    std::cout << formatToString(context.depthTargets[0].format) << "\n";
 
 
     std::cout << "\Selected Presentation Mode:\n";

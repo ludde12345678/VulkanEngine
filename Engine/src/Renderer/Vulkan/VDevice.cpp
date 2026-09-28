@@ -35,9 +35,15 @@ void createLogicalDevice(VulkanContext& ctx) {
 	VkPhysicalDeviceFeatures deviceFeatures{};
 	deviceFeatures.samplerAnisotropy = VK_TRUE;
 
+	VkPhysicalDeviceExtendedDynamicStateFeaturesEXT ExtStateFeatures{};
+	ExtStateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+	ExtStateFeatures.pNext = nullptr;
+	ExtStateFeatures.extendedDynamicState = VK_TRUE;
+
+
 	VkPhysicalDeviceSynchronization2Features sync2Features{};
 	sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
-	sync2Features.pNext = nullptr;
+	sync2Features.pNext = &ExtStateFeatures;
 	sync2Features.synchronization2 = VK_TRUE;
 
 	VkPhysicalDeviceShaderObjectFeaturesEXT shaderObjFeatures{};

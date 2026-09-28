@@ -2,43 +2,69 @@
 
 void createShaders(RendererContext& ctx)
 {
-	std::cout << (VConfig::SHADER_DIR / "main.vert.spv").string();
-	auto vertCode = readFile((VConfig::SHADER_DIR / "main.vert.spv").string());
-	auto fragCode = readFile((VConfig::SHADER_DIR / "main.frag.spv").string());
-	
-	std::vector<VkShaderCreateInfoEXT> createInfos{
-	createShaderInfo(ctx, vertCode, VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT),
-	createShaderInfo(ctx, fragCode , VK_SHADER_STAGE_FRAGMENT_BIT, 0)
-	};
+	if (!(std::filesystem::exists(VConfig::SHADER_DIR) && std::filesystem::is_directory(VConfig::SHADER_DIR))) { throw std::runtime_error("Shader folder not found"); }
+	for (const auto& file : std::filesystem::directory_iterator(VConfig::SHADER_DIR)) {
+		if (!std::filesystem::is_regular_file(file.status())) { continue; }
+		
+		std::cout << "Shader found at:" << (file.path().string()) << "\n";
+		std::string shaderName = file.path().stem().stem().string();
+		std::string extension = file.path().stem().extension().string();
+		auto Code = readFile(file.path().string());
+		VkShaderCreateInfoEXT createInfo;
+		if (file.path().stem().extension().string() == ".frag") {
+			createInfo = createShaderInfo(ctx, Code, shaderName, VK_SHADER_STAGE_FRAGMENT_BIT, 0);
+		}
+		else if (file.path().stem().extension().string() == ".vert") {
+			createInfo = createShaderInfo(ctx, Code, shaderName, VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT);
+		}
+		else if (file.path().stem().extension().string() == ".compute") {
+			createInfo = createShaderInfo(ctx, Code, shaderName, VK_SHADER_STAGE_COMPUTE_BIT, 0);
+		}
+		else {
+			continue;
+		}
 
-	
-	if (!vkCreateShadersEXT)
-	{
-		throw std::runtime_error("Shader Extension not loaded!");
+		if (!vkCreateShadersEXT){throw std::runtime_error("Shader Extension not loaded!");}
+
+		VkShaderEXT shaderHandle;
+		VK_CHECK(vkCreateShadersEXT(
+			ctx.vulkanContext.device,
+			1,
+			&createInfo,
+			nullptr,
+			&shaderHandle
+		
+		), "Error: Shader creation failed");
+
+		if (VConfig::PRINT_DEBUG_INFO) {
+			std::cout << "Shader Handle: " << shaderHandle << "\n";
+		}
+
+		// TODO: Will leak if duplicate is discovered, since its already created the shader, fix if u have the time
+		if (extension == ".frag") {
+			if (ctx.shaders.fragmentShaders.contains(shaderName)) {
+				throw std::runtime_error("Duplicate fragment shader name: " + shaderName);
+			}
+			ctx.shaders.fragmentShaders[shaderName] = shaderHandle;
+		}
+		else if (extension == ".vert") {
+			if (ctx.shaders.vertexShaders.contains(shaderName)) {
+				throw std::runtime_error("Duplicate vertex shader name: " + shaderName);
+			}
+			ctx.shaders.vertexShaders[shaderName] = shaderHandle;
+		}
+		else if (extension == ".compute") {
+			if (ctx.shaders.computeShaders.contains(shaderName)) {
+				throw std::runtime_error("Duplicate compute shader name: " + shaderName);
+			}
+			ctx.shaders.computeShaders[shaderName] = shaderHandle;
+		}
+		
 	}
-
-	std::vector<VkShaderEXT> shaderHandles(static_cast<uint32_t>(createInfos.size()));
-	if (vkCreateShadersEXT(ctx.vulkanContext.device, static_cast<uint32_t>(createInfos.size()),
-		createInfos.data(), nullptr, shaderHandles.data()) != VK_SUCCESS) {
-		throw std::runtime_error("Error: Shader creation failed");
-	}
-
-	if (VConfig::PRINT_DEBUG_INFO) {
-		std::cout << "Vertex shader: " << shaderHandles[0] << "\n";
-		std::cout << "Fragment shader: " << shaderHandles[1] << "\n";
-	}
-
-	ShaderContext shaderCtx{
-	shaderHandles[0],
-	shaderHandles[1]
-	};
-	ctx.shaders = shaderCtx;
-
 	
-
 }
 
-VkShaderCreateInfoEXT createShaderInfo(RendererContext& ctx, const std::vector<char>& code, VkShaderStageFlagBits stage, VkShaderStageFlags nextStage) {
+VkShaderCreateInfoEXT createShaderInfo(RendererContext& ctx, const std::vector<char>& code,std::string& name, VkShaderStageFlagBits stage, VkShaderStageFlags nextStage) {
 	VkShaderCreateInfoEXT shaderInfo{};
 	shaderInfo.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
 	shaderInfo.stage = stage;
@@ -77,27 +103,39 @@ std::vector<char> readFile(const std::string filename) {
 
 void destroyShaders(RendererContext& ctx)
 {
-	if (vkDestroyShaderEXT)
-	{
-		vkDestroyShaderEXT(ctx.vulkanContext.device, ctx.shaders.vertexShader, nullptr);
-		vkDestroyShaderEXT(ctx.vulkanContext.device, ctx.shaders.fragmentShader, nullptr);
-	}	
-
-
+	for (auto& [name, shader] : ctx.shaders.vertexShaders) {
+		vkDestroyShaderEXT(ctx.vulkanContext.device, shader, nullptr);
+	}
+	for (auto& [name, shader] : ctx.shaders.fragmentShaders) {
+		vkDestroyShaderEXT(ctx.vulkanContext.device, shader, nullptr);
+	}
+	for (auto& [name, shader] : ctx.shaders.computeShaders) {
+		vkDestroyShaderEXT(ctx.vulkanContext.device, shader, nullptr);
+	}
 }
 
-void bindShaders(RendererContext& ctx, VkCommandBuffer cmd) {
-	static const VkShaderStageFlagBits stages[] = {
-	VK_SHADER_STAGE_VERTEX_BIT,
-	VK_SHADER_STAGE_FRAGMENT_BIT
-	};
-	static const VkShaderEXT shaders[] = {
-	ctx.shaders.vertexShader,
-	ctx.shaders.fragmentShader
-
-	};
-
-	vkCmdBindShadersEXT(cmd, static_cast<uint32_t>(std::size(stages)), stages, shaders);
+void bindShaders(RendererContext& ctx, VkCommandBuffer cmd, const std::string& name) {
+	std::vector<VkShaderStageFlagBits> stages;
+	stages.reserve(2);
+	std::vector<VkShaderEXT> shaders;
+	shaders.reserve(2);
+	if (ctx.shaders.vertexShaders.contains(name)) {
+		stages.push_back(VK_SHADER_STAGE_VERTEX_BIT);
+		shaders.push_back(ctx.shaders.vertexShaders.at(name));
+	}
+	if (ctx.shaders.fragmentShaders.contains(name)) {
+		stages.push_back(VK_SHADER_STAGE_FRAGMENT_BIT);
+		shaders.push_back(ctx.shaders.fragmentShaders.at(name));
+	}
+	else {
+		// No fragment shader: explicitly disable the fragment stage.
+		stages.push_back(VK_SHADER_STAGE_FRAGMENT_BIT);
+		shaders.push_back(VK_NULL_HANDLE);
+	}
+	if (!ctx.shaders.vertexShaders.contains(name)) {
+		throw std::runtime_error("No vertex shader found: " + name);
+	}
+	vkCmdBindShadersEXT(cmd, stages.size(), stages.data(), shaders.data());
 
 }
 
